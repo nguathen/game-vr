@@ -1,0 +1,157 @@
+import gameManager from '../core/game-manager.js';
+import { products } from './iap-products.js';
+
+const META_BILLING_URL = 'https://store.meta.com/billing';
+
+class IAPManager {
+  constructor() {
+    this._products = products;
+    this._service = null;
+    this._devMode = false;
+    this._ready = false;
+  }
+
+  get products() { return this._products; }
+  get devMode() { return this._devMode; }
+  get ready() { return this._ready; }
+
+  async init() {
+    try {
+      if (!window.getDigitalGoodsService) {
+        throw new Error('Digital Goods API not available');
+      }
+      this._service = await window.getDigitalGoodsService(META_BILLING_URL);
+      console.log('[IAPManager] Digital Goods API connected');
+
+      await this._restoreEntitlements();
+      await this._fetchPrices();
+    } catch (err) {
+      console.warn('[IAPManager] Falling back to dev mode:', err.message);
+      this._devMode = true;
+    }
+
+    this._ready = true;
+  }
+
+  async _fetchPrices() {
+    if (!this._service) return;
+
+    const skus = this._products.map(p => p.sku);
+    try {
+      const details = await this._service.getDetails(skus);
+      for (const detail of details) {
+        const product = this._products.find(p => p.sku === detail.itemId);
+        if (product) {
+          product.metaPrice = detail.price;
+          product.metaTitle = detail.title;
+        }
+      }
+      console.log('[IAPManager] Prices fetched from Meta');
+    } catch (err) {
+      console.warn('[IAPManager] Failed to fetch prices:', err.message);
+    }
+  }
+
+  async _restoreEntitlements() {
+    if (!this._service) return;
+
+    try {
+      const purchases = await this._service.listPurchases();
+      for (const purchase of purchases) {
+        const product = this._products.find(p => p.sku === purchase.itemId);
+        if (!product) continue;
+
+        if (product.type === 'non_consumable') {
+          gameManager.addPurchase(product.id);
+          if (product.id === 'premium_unlock') {
+            gameManager.setPremium(true);
+          }
+          console.log(`[IAPManager] Restored entitlement: ${product.id}`);
+        }
+      }
+    } catch (err) {
+      console.warn('[IAPManager] Failed to restore entitlements:', err.message);
+    }
+  }
+
+  async purchase(productId) {
+    const product = this._products.find(p => p.id === productId);
+    if (!product) throw new Error(`Product not found: ${productId}`);
+
+    if (this._devMode) {
+      return this._devPurchase(product);
+    }
+
+    return this._metaPurchase(product);
+  }
+
+  async _metaPurchase(product) {
+    const methodData = [{
+      supportedMethods: META_BILLING_URL,
+      data: { sku: product.sku },
+    }];
+
+    const details = {
+      total: {
+        label: product.name,
+        amount: { currency: 'USD', value: product.price.toString() },
+      },
+    };
+
+    const request = new PaymentRequest(methodData, details);
+    const response = await request.show();
+
+    const { purchaseToken } = response.details;
+
+    // Grant the product
+    this._grantProduct(product);
+
+    // Consume consumables so they can be purchased again
+    if (product.type === 'consumable' && this._service) {
+      await this._service.consume(purchaseToken);
+    }
+
+    await response.complete('success');
+    return { success: true, product };
+  }
+
+  async _devPurchase(product) {
+    console.log(`[IAPManager] Dev purchase: ${product.id}`);
+
+    try {
+      const res = await fetch('/api/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ productId: product.id }),
+      });
+      if (res.ok) await res.json();
+    } catch { /* dev server may not be running */ }
+
+    this._grantProduct(product);
+    return { success: true, product, devMode: true };
+  }
+
+  _grantProduct(product) {
+    if (product.type === 'consumable') {
+      gameManager.addCoins(product.coinAmount);
+    } else if (product.type === 'non_consumable') {
+      gameManager.addPurchase(product.id);
+      if (product.id === 'premium_unlock') {
+        gameManager.setPremium(true);
+      }
+    }
+  }
+
+  getDisplayPrice(product) {
+    if (product.metaPrice) return product.metaPrice;
+    return `$${product.price.toFixed(2)}`;
+  }
+
+  isOwned(productId) {
+    return gameManager.hasPurchased(productId);
+  }
+}
+
+const iapManager = new IAPManager();
+export { iapManager };
+export default iapManager;

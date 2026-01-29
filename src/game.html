@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VR Quest Game - Play</title>
+  <script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
+  <link rel="stylesheet" href="./css/style.css">
+</head>
+<body>
+  <div id="transition" class="transition"></div>
+  <!-- Game Over overlay -->
+  <div id="game-over-overlay" class="hidden">
+    <div class="menu">
+      <h1>Game Over</h1>
+      <p id="final-score">Score: 0</p>
+      <p id="final-high-score">High Score: 0</p>
+      <div class="buttons">
+        <button id="btn-retry" class="btn btn-primary">Retry</button>
+        <button id="btn-menu" class="btn btn-secondary">Main Menu</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Countdown overlay -->
+  <div id="countdown-overlay" class="hidden">
+    <div class="countdown-text" id="countdown-number">3</div>
+  </div>
+
+  <!-- Register A-Frame components before scene -->
+  <script src="./js/components/smooth-locomotion.js"></script>
+  <script src="./js/components/shoot-controls.js"></script>
+  <script src="./js/components/target-hit.js"></script>
+
+  <a-scene id="game-scene" vr-mode-ui="enterVRButton: #enter-vr-custom">
+    <!-- Player Rig with smooth locomotion -->
+    <a-entity id="player-rig" position="0 0 0" smooth-locomotion="speed: 3; camera: #camera">
+      <a-camera id="camera" position="0 1.6 0" wasd-controls="acceleration: 20" look-controls>
+        <!-- Crosshair for non-VR -->
+        <a-ring id="crosshair" position="0 0 -1" radius-inner="0.01" radius-outer="0.015"
+                color="#00ff88" material="shader: flat; opacity: 0.8"></a-ring>
+        <!-- HUD -->
+        <a-text id="hud-score" value="Score: 0" position="-0.45 0.3 -1"
+                scale="0.35 0.35 0.35" color="#00ff88" font="mozillavr"
+                align="left"></a-text>
+        <a-text id="hud-timer" value="60" position="0.45 0.3 -1"
+                scale="0.35 0.35 0.35" color="#ffaa00" font="mozillavr"
+                align="right"></a-text>
+        <a-text id="hud-combo" value="" position="0 0.2 -1"
+                scale="0.3 0.3 0.3" color="#ff44aa" font="mozillavr"
+                align="center"></a-text>
+        <!-- Non-VR cursor (click to shoot) -->
+        <a-cursor color="#00ff88" fuse="false" raycaster="objects: .target; far: 100"></a-cursor>
+      </a-camera>
+
+      <!-- Left controller: movement (thumbstick handled by smooth-locomotion) -->
+      <a-entity id="left-hand"
+                oculus-touch-controls="hand: left"
+                laser-controls="hand: left; model: false"
+                raycaster="objects: .target; far: 50; lineColor: #44aaff; lineOpacity: 0.5"
+                shoot-controls="hand: left">
+      </a-entity>
+
+      <!-- Right controller: primary shooting hand -->
+      <a-entity id="right-hand"
+                oculus-touch-controls="hand: right"
+                laser-controls="hand: right; model: false"
+                raycaster="objects: .target; far: 50; lineColor: #ff4444; lineOpacity: 0.7"
+                shoot-controls="hand: right">
+      </a-entity>
+    </a-entity>
+
+    <!-- Environment -->
+    <a-sky color="#0a0a1a"></a-sky>
+
+    <!-- Grid floor -->
+    <a-plane position="0 0 0" rotation="-90 0 0" width="100" height="100"
+             material="color: #111133; wireframe: false" shadow="receive: true"></a-plane>
+    <!-- Grid overlay -->
+    <a-entity id="floor-grid" position="0 0.01 0" rotation="-90 0 0">
+      <a-plane width="30" height="30" material="color: #1a1a4e; wireframe: true; wireframeLinewidth: 1; opacity: 0.3"
+               segments-width="30" segments-height="30"></a-plane>
+    </a-entity>
+
+    <!-- Arena walls -->
+    <a-box position="0 2 -15" width="30" height="5" depth="0.1"
+           material="color: #0044aa; opacity: 0.15; shader: flat"></a-box>
+    <a-box position="-15 2 0" width="0.1" height="5" depth="30"
+           material="color: #0044aa; opacity: 0.15; shader: flat"></a-box>
+    <a-box position="15 2 0" width="0.1" height="5" depth="30"
+           material="color: #0044aa; opacity: 0.15; shader: flat"></a-box>
+    <a-box position="0 2 15" width="30" height="5" depth="0.1"
+           material="color: #0044aa; opacity: 0.15; shader: flat"></a-box>
+
+    <!-- Lighting -->
+    <a-light type="ambient" color="#222244" intensity="0.4"></a-light>
+    <a-light type="point" position="0 10 0" intensity="1.2" color="#4466ff" distance="40"></a-light>
+    <a-light type="point" position="-8 6 -8" intensity="0.6" color="#ff4444" distance="25"></a-light>
+    <a-light type="point" position="8 6 -8" intensity="0.6" color="#44ff44" distance="25"></a-light>
+    <a-light type="point" position="0 4 8" intensity="0.4" color="#ff88ff" distance="20"></a-light>
+
+    <!-- Decorative pillars -->
+    <a-cylinder position="-14 2 -14" radius="0.3" height="4" color="#1a1a4e"
+                material="shader: flat; opacity: 0.5"></a-cylinder>
+    <a-cylinder position="14 2 -14" radius="0.3" height="4" color="#1a1a4e"
+                material="shader: flat; opacity: 0.5"></a-cylinder>
+    <a-cylinder position="-14 2 14" radius="0.3" height="4" color="#1a1a4e"
+                material="shader: flat; opacity: 0.5"></a-cylinder>
+    <a-cylinder position="14 2 14" radius="0.3" height="4" color="#1a1a4e"
+                material="shader: flat; opacity: 0.5"></a-cylinder>
+
+    <!-- Target container -->
+    <a-entity id="target-container"></a-entity>
+  </a-scene>
+
+  <script type="module" src="./js/core/game-manager.js"></script>
+  <script type="module" src="./js/game/score-manager.js"></script>
+  <script type="module" src="./js/game/target-system.js"></script>
+  <script type="module" src="./js/game-main.js"></script>
+</body>
+</html>

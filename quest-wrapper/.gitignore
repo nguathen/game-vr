@@ -1,0 +1,8 @@
+*.keystore
+*.jks
+debug-backup.keystore
+local.properties
+build/
+.gradle/
+app/build/
+build-log*.txt

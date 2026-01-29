@@ -1,0 +1,12 @@
+{
+  "name": "NVR IAP Test",
+  "short_name": "NVR IAP",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "landscape",
+  "background_color": "#000000",
+  "theme_color": "#000000",
+  "ovr_multi_tab_enabled": false,
+  "ovr_package_name": "com.nvr.iaptest",
+  "ovr_scope_url": "https://george-atlantic-labs-without.trycloudflare.com/"
+}

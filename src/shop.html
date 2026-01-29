@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VR Quest Game - Shop</title>
+  <script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
+  <link rel="stylesheet" href="./css/style.css">
+</head>
+<body>
+  <div id="transition" class="transition"></div>
+  <!-- 2D Shop overlay -->
+  <div id="shop-overlay">
+    <div class="menu shop-menu">
+      <h1>Shop</h1>
+      <p id="shop-coins">Coins: 0</p>
+      <div id="product-list" class="product-list"></div>
+      <button id="btn-back" class="btn btn-secondary">Back to Menu</button>
+    </div>
+  </div>
+
+  <a-scene id="shop-scene" vr-mode-ui="enabled: false">
+    <a-sky color="#1a1a2e"></a-sky>
+    <a-light type="ambient" color="#404060" intensity="0.6"></a-light>
+  </a-scene>
+
+  <script type="module" src="./js/iap/iap-products.js"></script>
+  <script type="module" src="./js/iap/iap-manager.js"></script>
+  <script type="module" src="./js/shop-main.js"></script>
+</body>
+</html>

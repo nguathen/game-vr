@@ -1,0 +1,24 @@
+{
+  "name": "vr-quest-game",
+  "version": "0.1.0",
+  "description": "Simple VR target shooting game with IAP, built with A-Frame WebXR",
+  "type": "module",
+  "scripts": {
+    "dev": "vite src --port 3000 --open",
+    "build": "vite build src --outDir ../dist",
+    "preview": "vite preview --port 3000",
+    "server": "node server/index.js",
+    "start": "concurrently \"npm run dev\" \"npm run server\"",
+    "prod": "npm run build && node server/index.js",
+    "tunnel": "npx cloudflared tunnel --url http://localhost:3001"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2",
+    "vite": "^6.1.0"
+  }
+}

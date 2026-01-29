@@ -1,0 +1,52 @@
+{
+  "packageId": "com.nvr.iaptest",
+  "applicationId": "0",
+  "host": "george-atlantic-labs-without.trycloudflare.com",
+  "name": "NVR IAP Test",
+  "launcherName": "NVR IAP",
+  "display": "standalone",
+  "themeColor": "#000000",
+  "themeColorDark": "#000000",
+  "navigationColor": "#000000",
+  "navigationColorDark": "#000000",
+  "navigationDividerColor": "#00000000",
+  "navigationDividerColorDark": "#000000",
+  "backgroundColor": "#000000",
+  "enableNotifications": false,
+  "enableMicrophone": false,
+  "enableXRScene": false,
+  "startUrl": "/",
+  "iconUrl": "https://george-atlantic-labs-without.trycloudflare.com/icon-512.png",
+  "splashScreenFadeOutDuration": 300,
+  "signingKey": {
+    "path": "./android.keystore",
+    "alias": "android"
+  },
+  "appVersion": "1.0.0",
+  "appVersionCode": 1,
+  "shortcuts": [],
+  "generatorApp": "bubblewrap-cli",
+  "fallbackType": "customtabs",
+  "features": {
+    "horizonBilling": {
+      "enabled": true,
+      "horizonOSAppMode": "VR"
+    },
+    "horizonPlatformSDK": {
+      "enabled": true
+    }
+  },
+  "alphaDependencies": {
+    "enabled": false
+  },
+  "enableSiteSettingsShortcut": false,
+  "isChromeOSOnly": false,
+  "isMetaQuest": true,
+  "horizonOSAppMode": "immersive",
+  "fullScopeUrl": "https://george-atlantic-labs-without.trycloudflare.com/",
+  "minSdkVersion": 29,
+  "orientation": "landscape",
+  "additionalTrustedOrigins": [],
+  "retainedBundles": [],
+  "fingerprints": []
+}

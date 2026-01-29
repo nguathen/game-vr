@@ -1,0 +1,59 @@
+{
+  "hooks": [
+    {
+      "name": "pre-commit-security",
+      "description": "Check for secrets before commit",
+      "matcher": "tool == \"Bash\" && tool_input.command matches \"git commit\"",
+      "hooks": [
+        {
+          "type": "command",
+          "command": "grep -rn \"api[_-]?key\\|password\\|secret\\|token\" --include=\"*.py\" --include=\"*.js\" --include=\"*.ts\" src/ 2>/dev/null | grep -v \"#.*TODO\" | head -5 && echo '[Hook] WARNING: Potential secrets found!' >&2 || true"
+        }
+      ]
+    },
+    {
+      "name": "post-edit-lint",
+      "description": "Run linter after editing Python files",
+      "matcher": "tool == \"Edit\" && tool_input.file_path matches \"\\\\.py$\"",
+      "hooks": [
+        {
+          "type": "command",
+          "command": "ruff check \"$TOOL_INPUT_FILE_PATH\" --fix --quiet 2>/dev/null || true"
+        }
+      ]
+    },
+    {
+      "name": "post-write-format",
+      "description": "Format file after writing",
+      "matcher": "tool == \"Write\" && tool_input.file_path matches \"\\\\.py$\"",
+      "hooks": [
+        {
+          "type": "command",
+          "command": "ruff format \"$TOOL_INPUT_FILE_PATH\" --quiet 2>/dev/null || true"
+        }
+      ]
+    },
+    {
+      "name": "warn-console-log",
+      "description": "Warn about console.log in JS/TS files",
+      "matcher": "tool == \"Edit\" && tool_input.file_path matches \"\\\\.(js|ts|tsx)$\"",
+      "hooks": [
+        {
+          "type": "command",
+          "command": "grep -n 'console\\.log' \"$TOOL_INPUT_FILE_PATH\" 2>/dev/null && echo '[Hook] Remove console.log before commit' >&2 || true"
+        }
+      ]
+    },
+    {
+      "name": "pre-push-tests",
+      "description": "Remind to run tests before push",
+      "matcher": "tool == \"Bash\" && tool_input.command matches \"git push\"",
+      "hooks": [
+        {
+          "type": "command",
+          "command": "echo '[Hook] Reminder: Have you run pytest tests/ -v ?' >&2"
+        }
+      ]
+    }
+  ]
+}

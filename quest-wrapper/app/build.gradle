@@ -1,0 +1,135 @@
+import groovy.xml.MarkupBuilder
+
+plugins {
+    id 'com.android.application'
+}
+
+def twaManifest = [
+    applicationId: 'com.nvr.iaptest',
+    hostName: 'non-mrs-www-symposium.trycloudflare.com',
+    launchUrl: '/',
+    name: 'NVR IAP Test',
+    launcherName: 'NVR IAP',
+    themeColor: '#000000',
+    themeColorDark: '#000000',
+    navigationColor: '#000000',
+    navigationColorDark: '#000000',
+    navigationDividerColor: '#00000000',
+    navigationDividerColorDark: '#000000',
+    backgroundColor: '#000000',
+    enableNotifications: false,
+    shortcuts: [],
+    splashScreenFadeOutDuration: 300,
+    generatorApp: 'bubblewrap-cli',
+    fallbackType: 'customtabs',
+    enableSiteSettingsShortcut: 'false',
+    orientation: 'landscape',
+]
+
+android {
+    compileSdkVersion 32
+    namespace 'com.nvr.iaptest'
+    defaultConfig {
+        applicationId 'com.nvr.iaptest'
+        minSdkVersion 29
+        targetSdkVersion 32
+        versionCode 3
+        versionName '1.0.0'
+
+        resValue "string", "appName", twaManifest.name
+        resValue "string", "launcherName", twaManifest.launcherName
+        def launchUrl = "https://" + twaManifest.hostName + twaManifest.launchUrl
+        resValue "string", "launchUrl", launchUrl
+        resValue "string", "hostName", twaManifest.hostName
+        resValue "string", "horizonOSAppMode", "immersive"
+        resValue "string", "fullScopeUrl", "https://non-mrs-www-symposium.trycloudflare.com/"
+
+        resValue "color", "colorPrimary", twaManifest.themeColor
+        resValue "color", "colorPrimaryDark", twaManifest.themeColorDark
+        resValue "color", "navigationColor", twaManifest.navigationColor
+        resValue "color", "navigationColorDark", twaManifest.navigationColorDark
+        resValue "color", "navigationDividerColor", twaManifest.navigationDividerColor
+        resValue "color", "navigationDividerColorDark", twaManifest.navigationDividerColorDark
+        resValue "color", "backgroundColor", twaManifest.backgroundColor
+
+        resValue "string", "providerAuthority", twaManifest.applicationId + '.fileprovider'
+        resValue "bool", "enableNotification", twaManifest.enableNotifications.toString()
+        resValue "integer", "splashScreenFadeOutDuration", twaManifest.splashScreenFadeOutDuration.toString()
+        resValue "string", "generatorApp", twaManifest.generatorApp
+        resValue "string", "fallbackType", twaManifest.fallbackType
+        resValue "bool", "enableSiteSettingsShortcut", twaManifest.enableSiteSettingsShortcut
+        resValue "string", "orientation", twaManifest.orientation
+    }
+    signingConfigs {
+        release {
+            storeFile file(System.getProperty("user.home") + "/.android/debug.keystore")
+            storePassword "android"
+            keyAlias "androiddebugkey"
+            keyPassword "android"
+        }
+    }
+    buildTypes {
+        release {
+            minifyEnabled true
+            signingConfig signingConfigs.release
+        }
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+    lintOptions {
+        checkReleaseBuilds false
+    }
+}
+
+task generateShorcutsFile {
+    assert twaManifest.shortcuts.size() < 5, "You can have at most 4 shortcuts."
+    twaManifest.shortcuts.eachWithIndex { s, i ->
+        assert s.name != null, 'Missing `name` in shortcut #' + i
+        assert s.short_name != null, 'Missing `short_name` in shortcut #' + i
+        assert s.url != null, 'Missing `icon` in shortcut #' + i
+        assert s.icon != null, 'Missing `url` in shortcut #' + i
+    }
+
+    def shortcutsFile = new File("$projectDir/src/main/res/xml", "shortcuts.xml")
+
+    def xmlWriter = new StringWriter()
+    def xmlMarkup = new MarkupBuilder(new IndentPrinter(xmlWriter, "    ", true))
+
+    xmlMarkup
+        .'shortcuts'('xmlns:android': 'http://schemas.android.com/apk/res/android') {
+            twaManifest.shortcuts.eachWithIndex { s, i ->
+                'shortcut'(
+                        'android:shortcutId': 'shortcut' + i,
+                        'android:enabled': 'true',
+                        'android:icon': '@drawable/' + s.icon,
+                        'android:shortcutShortLabel': '@string/shortcut_short_name_' + i,
+                        'android:shortcutLongLabel': '@string/shortcut_name_' + i) {
+                    'intent'(
+                            'android:action': 'android.intent.action.MAIN',
+                            'android:targetPackage': twaManifest.applicationId,
+                            'android:targetClass': twaManifest.applicationId + '.LauncherActivity',
+                            'android:data': s.url)
+                    'categories'('android:name': 'android.intent.category.LAUNCHER')
+                }
+            }
+        }
+    shortcutsFile.text = xmlWriter.toString() + '\n'
+}
+
+preBuild.dependsOn(generateShorcutsFile)
+
+repositories {
+    mavenLocal()
+    google()
+    mavenCentral()
+}
+
+dependencies {
+    implementation fileTree(include: ['*.jar'], dir: 'libs')
+    implementation 'com.meta.androidbrowserhelper:androidbrowserhelper:2.5.0'
+    implementation 'com.meta.androidbrowserhelper:horizonplatformsdk:1.1.0'
+    implementation 'com.meta.androidbrowserhelper:horizonpermissions:1.0.0'
+    implementation 'com.meta.androidbrowserhelper:horizonbilling:1.0.0-alpha11'
+}

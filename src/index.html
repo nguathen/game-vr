@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VR Quest Game</title>
+  <script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
+  <link rel="stylesheet" href="./css/style.css">
+</head>
+<body>
+  <!-- Page transition overlay -->
+  <div id="transition" class="transition"></div>
+
+  <!-- 2D Overlay UI -->
+  <div id="overlay">
+    <div class="menu">
+      <h1>VR Quest Game</h1>
+      <p class="subtitle">Target Shooting VR</p>
+      <div id="premium-badge" class="premium-badge hidden">PREMIUM</div>
+      <div class="stats">
+        <div class="stat-item">
+          <span class="stat-label">High Score</span>
+          <span class="stat-value" id="high-score">0</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">Coins</span>
+          <span class="stat-value" id="coins-display">0</span>
+        </div>
+      </div>
+      <div class="buttons">
+        <button id="btn-play" class="btn btn-primary">Play</button>
+        <button id="btn-shop" class="btn btn-secondary">Shop</button>
+      </div>
+      <p class="hint">Click "Play" or enter VR to start</p>
+    </div>
+  </div>
+
+  <!-- A-Frame VR Scene (Main Menu environment) -->
+  <a-scene id="scene" vr-mode-ui="enterVRButton: #enter-vr-btn">
+    <a-entity id="rig" position="0 1.6 0">
+      <a-camera wasd-controls-enabled="false" look-controls>
+        <a-cursor color="#ffffff" fuse="false"></a-cursor>
+      </a-camera>
+    </a-entity>
+
+    <!-- Environment -->
+    <a-sky color="#0a0a1a"></a-sky>
+    <a-plane position="0 0 0" rotation="-90 0 0" width="50" height="50" color="#0d1b2a"></a-plane>
+    <a-plane position="0 0.01 0" rotation="-90 0 0" width="20" height="20"
+             material="color: #1b2838; wireframe: true; opacity: 0.2"
+             segments-width="20" segments-height="20"></a-plane>
+
+    <!-- Lighting -->
+    <a-light type="ambient" color="#222244" intensity="0.4"></a-light>
+    <a-light type="point" position="0 6 -4" intensity="1" color="#4466ff" distance="20"></a-light>
+    <a-light type="point" position="-4 4 -6" intensity="0.5" color="#ff4466" distance="15"></a-light>
+    <a-light type="point" position="4 4 -6" intensity="0.5" color="#44ff66" distance="15"></a-light>
+
+    <!-- Title in 3D -->
+    <a-text value="VR Quest Game" position="0 3.2 -5" align="center"
+            color="#00d4ff" width="8" font="mozillavr"></a-text>
+    <a-text value="Target Shooting" position="0 2.5 -5" align="center"
+            color="#666688" width="4" font="mozillavr"></a-text>
+
+    <!-- Decorative floating targets (preview) -->
+    <a-sphere position="-3 2 -8" radius="0.35" material="color: #e94560; shader: flat"
+              animation="property: position; to: -3 2.5 -8; dur: 2000; easing: easeInOutSine; loop: true; dir: alternate"></a-sphere>
+    <a-sphere position="3 2.5 -9" radius="0.25" material="color: #2ed573; shader: flat"
+              animation="property: position; to: 3 3 -9; dur: 1800; easing: easeInOutSine; loop: true; dir: alternate"></a-sphere>
+    <a-sphere position="0 3.5 -11" radius="0.4" material="color: #1e90ff; shader: flat"
+              animation="property: position; to: 0 4 -11; dur: 2400; easing: easeInOutSine; loop: true; dir: alternate"></a-sphere>
+    <a-sphere position="-5 1.5 -7" radius="0.2" material="color: #ffa502; shader: flat"
+              animation="property: position; to: -5 2 -7; dur: 1600; easing: easeInOutSine; loop: true; dir: alternate"></a-sphere>
+    <a-sphere position="5 3 -10" radius="0.3" material="color: #a855f7; shader: flat"
+              animation="property: position; to: 5 3.5 -10; dur: 2200; easing: easeInOutSine; loop: true; dir: alternate"></a-sphere>
+
+    <!-- Rotating ring -->
+    <a-torus position="0 4.5 -12" radius="1.5" radius-tubular="0.03"
+             material="color: #00d4ff; shader: flat; opacity: 0.3"
+             animation="property: rotation; to: 360 360 0; dur: 10000; easing: linear; loop: true"></a-torus>
+  </a-scene>
+
+  <script type="module" src="./js/core/game-manager.js"></script>
+  <script type="module" src="./js/main.js"></script>
+</body>
+</html>
