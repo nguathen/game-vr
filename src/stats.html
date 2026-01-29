@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VR Quest - Stats</title>
+  <link rel="stylesheet" href="./css/style.css">
+</head>
+<body>
+  <div id="transition" class="transition"></div>
+
+  <div id="overlay">
+    <div class="menu stats-menu">
+      <h1>Stats</h1>
+
+      <div class="stats-grid" id="stats-summary"></div>
+
+      <div class="section-label">Per Mode</div>
+      <div id="stats-modes"></div>
+
+      <div class="section-label">Weapon Usage</div>
+      <div id="stats-weapons"></div>
+
+      <div class="section-label">Recent Games</div>
+      <div id="stats-recent"></div>
+
+      <div class="buttons" style="margin-top: 16px">
+        <button id="btn-back" class="btn btn-secondary">Back to Menu</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="./js/stats-main.js"></script>
+</body>
+</html>

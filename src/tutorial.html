@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VR Quest - Tutorial</title>
+  <script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
+  <link rel="stylesheet" href="./css/style.css">
+</head>
+<body>
+  <div id="transition" class="transition"></div>
+
+  <!-- Tutorial instruction overlay -->
+  <div id="tutorial-overlay" class="tutorial-overlay">
+    <div class="tutorial-box">
+      <div class="tutorial-step" id="tutorial-step">Step 1 / 5</div>
+      <div class="tutorial-instruction" id="tutorial-instruction">Look around by moving your head or mouse</div>
+      <div class="tutorial-hint" id="tutorial-hint">Move the camera to continue</div>
+    </div>
+  </div>
+
+  <!-- Tutorial complete overlay -->
+  <div id="tutorial-complete" class="hidden">
+    <div class="menu tutorial-complete-menu">
+      <h1>You're Ready!</h1>
+      <p class="tutorial-congrats">Now choose a game mode and start playing.</p>
+      <div class="buttons">
+        <button id="btn-start" class="btn btn-primary">Start Playing</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- A-Frame components -->
+  <script src="./js/components/shoot-controls.js"></script>
+  <script src="./js/components/particle-burst.js"></script>
+  <script src="./js/components/target-hit.js"></script>
+
+  <a-scene id="tutorial-scene" vr-mode-ui="enterVRButton: #enter-vr-custom">
+    <a-entity id="player-rig" position="0 0 0">
+      <a-camera id="camera" position="0 1.6 0" wasd-controls="acceleration: 0" look-controls>
+        <a-ring id="crosshair" position="0 0 -1" radius-inner="0.01" radius-outer="0.015"
+                color="#00ff88" material="shader: flat; opacity: 0.8"></a-ring>
+        <a-cursor color="#00ff88" fuse="false" raycaster="objects: .target; far: 100"></a-cursor>
+      </a-camera>
+
+      <a-entity id="left-hand"
+                oculus-touch-controls="hand: left"
+                laser-controls="hand: left; model: false"
+                raycaster="objects: .target; far: 50; lineColor: #44aaff; lineOpacity: 0.5"
+                shoot-controls="hand: left"></a-entity>
+      <a-entity id="right-hand"
+                oculus-touch-controls="hand: right"
+                laser-controls="hand: right; model: false"
+                raycaster="objects: .target; far: 50; lineColor: #ff4444; lineOpacity: 0.7"
+                shoot-controls="hand: right"></a-entity>
+    </a-entity>
+
+    <!-- Environment -->
+    <a-sky color="#0a0a1a"></a-sky>
+    <a-plane position="0 0 0" rotation="-90 0 0" width="100" height="100"
+             material="color: #111133; wireframe: false"></a-plane>
+    <a-entity position="0 0.01 0" rotation="-90 0 0">
+      <a-plane width="30" height="30" material="color: #1a1a4e; wireframe: true; wireframeLinewidth: 1; opacity: 0.3"
+               segments-width="30" segments-height="30"></a-plane>
+    </a-entity>
+
+    <a-light type="ambient" color="#222244" intensity="0.4"></a-light>
+    <a-light type="point" position="0 10 0" intensity="1.2" color="#4466ff" distance="40"></a-light>
+    <a-light type="point" position="-8 6 -8" intensity="0.6" color="#ff4444" distance="25"></a-light>
+    <a-light type="point" position="8 6 -8" intensity="0.6" color="#44ff44" distance="25"></a-light>
+
+    <!-- Target container for tutorial spawns -->
+    <a-entity id="target-container"></a-entity>
+  </a-scene>
+
+  <script type="module" src="./js/tutorial-main.js"></script>
+</body>
+</html>

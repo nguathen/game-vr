@@ -1,11 +1,15 @@
 /**
  * A-Frame component: handles target being hit.
- * Listens for 'hit' custom event dispatched by shoot-controls.
- * Also supports click (cursor/raycaster click) for non-VR.
+ * Supports HP (multi-hit), damage numbers, and particle bursts.
  *
- * Usage: <a-entity target-hit>
+ * Usage: <a-entity target-hit="hp: 2; targetType: heavy">
  */
 AFRAME.registerComponent('target-hit', {
+  schema: {
+    hp: { type: 'int', default: 1 },
+    targetType: { type: 'string', default: 'standard' },
+  },
+
   init() {
     this._onHit = this._onHit.bind(this);
     this._onClick = this._onClick.bind(this);
@@ -13,6 +17,7 @@ AFRAME.registerComponent('target-hit', {
     this.el.addEventListener('hit', this._onHit);
     this.el.addEventListener('click', this._onClick);
     this._destroyed = false;
+    this._hp = this.data.hp;
   },
 
   remove() {
@@ -21,15 +26,37 @@ AFRAME.registerComponent('target-hit', {
   },
 
   _onClick() {
-    this._onHit();
+    this._onHit({ detail: { damage: 1 } });
   },
 
-  _onHit() {
+  _onHit(evt) {
     if (this._destroyed) return;
-    this._destroyed = true;
 
-    // Explosion effect: scale up briefly then disappear
+    const damage = evt?.detail?.damage || 1;
+    this._hp -= damage;
+
+    if (this._hp > 0) {
+      // Flash on hit but don't destroy
+      const origColor = this.el.getAttribute('material')?.color || '#ffffff';
+      this.el.setAttribute('material', 'color', '#ffffff');
+      setTimeout(() => {
+        if (!this._destroyed) {
+          this.el.setAttribute('material', 'color', origColor);
+        }
+      }, 80);
+      return;
+    }
+
+    this._destroyed = true;
+    const color = this.el.getAttribute('material')?.color || '#ffffff';
+    const pos = this.el.object3D.position;
+
+    // Spawn particle burst
+    this._spawnParticles(color, pos);
+
+    // Explosion effect
     this.el.removeAttribute('animation__float');
+    this.el.removeAttribute('animation__move');
     this.el.setAttribute('material', 'color: #ffffff; shader: flat');
     this.el.setAttribute('animation__explode', {
       property: 'scale',
@@ -47,12 +74,24 @@ AFRAME.registerComponent('target-hit', {
       });
     }, 100);
 
-    // Emit destroyed event for target-system
     setTimeout(() => {
-      this.el.emit('destroyed');
+      this.el.emit('destroyed', { damage, color, position: { x: pos.x, y: pos.y, z: pos.z } });
       if (this.el.parentNode) {
         this.el.parentNode.removeChild(this.el);
       }
     }, 300);
+  },
+
+  _spawnParticles(color, pos) {
+    const type = this.data.targetType;
+    const counts = { standard: 8, heavy: 15, bonus: 12, decoy: 6, speed: 10 };
+    const count = counts[type] || 8;
+
+    const burstColor = type === 'bonus' ? '#ffd700' : type === 'decoy' ? '#661111' : color;
+
+    const burst = document.createElement('a-entity');
+    burst.setAttribute('position', `${pos.x} ${pos.y} ${pos.z}`);
+    burst.setAttribute('particle-burst', `color: ${burstColor}; count: ${count}; size: 0.04; speed: 3; lifetime: 400`);
+    this.el.sceneEl.appendChild(burst);
   },
 });

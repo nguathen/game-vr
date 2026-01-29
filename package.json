@@ -1,7 +1,7 @@
 {
   "name": "vr-quest-game",
-  "version": "0.1.0",
-  "description": "Simple VR target shooting game with IAP, built with A-Frame WebXR",
+  "version": "2.0.0",
+  "description": "VR Target Shooter V2 — multi-mode, weapon system, XP progression, Firebase cloud sync",
   "type": "module",
   "scripts": {
     "dev": "vite src --port 3000 --open",
@@ -15,7 +15,8 @@
   "dependencies": {
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
-    "express": "^4.21.2"
+    "express": "^4.21.2",
+    "firebase": "^12.8.0"
   },
   "devDependencies": {
     "concurrently": "^9.1.2",

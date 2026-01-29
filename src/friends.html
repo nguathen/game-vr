@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VR Quest - Friends</title>
+  <link rel="stylesheet" href="./css/style.css">
+</head>
+<body>
+  <div id="transition" class="transition"></div>
+
+  <div class="settings-page">
+    <div class="menu friends-menu">
+      <h1>Friends</h1>
+
+      <div class="section-label">Your Friend Code</div>
+      <div class="friend-code-row">
+        <span class="friend-code" id="my-code">------</span>
+        <button id="btn-copy-code" class="btn-small">Copy</button>
+      </div>
+
+      <div class="section-label">Add Friend</div>
+      <div class="friend-add-row">
+        <input type="text" id="friend-code-input" class="friend-input" placeholder="Enter code" maxlength="6">
+        <button id="btn-add-friend" class="btn-small btn-primary-small">Add</button>
+      </div>
+      <div id="add-result" class="add-result"></div>
+
+      <div class="section-label">Friends (<span id="friend-count">0</span> / 20)</div>
+      <div id="friend-list" class="friend-list">
+        <p class="no-scores" id="no-friends">No friends yet. Share your code!</p>
+      </div>
+
+      <div id="offline-msg" class="offline-msg hidden">Friends require online mode</div>
+
+      <div class="buttons">
+        <button id="btn-back" class="btn btn-secondary">Back</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="./js/friends-main.js"></script>
+</body>
+</html>

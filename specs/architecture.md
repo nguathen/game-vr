@@ -246,6 +246,35 @@ Score + Retry         Item → Save
 - Negative: Tunnel URL hardcoded, cần rebuild khi URL thay đổi
 - Risk: Production cần stable hosting (không dùng Cloudflare quick tunnel)
 
+### ADR-005: A-Frame Particle System (No External Library)
+**Status:** Accepted
+**Date:** 2026-01-29
+
+**Context:** Need particle effects for target destruction and visual feedback. Options: aframe-particle-system-component (external), Three.js Points (low-level), or simple entity spawning.
+
+**Decision:** Use simple A-Frame entity spawning (create small a-sphere elements with animation, auto-remove). No external particle library.
+
+**Consequences:**
+- Positive: Zero dependencies, full control, easy to understand
+- Positive: Works in all browsers, no compatibility issues
+- Negative: Less performant than GPU-based particles for large counts
+- Mitigation: Cap at 15 fragments per burst, auto-cleanup after 500ms
+
+### ADR-006: Procedural Audio (No Audio Files)
+**Status:** Accepted
+**Date:** 2026-01-29
+
+**Context:** Game needs background music and additional SFX. Options: embed audio files (MP3/OGG), use a music library (Tone.js), or procedural Web Audio API.
+
+**Decision:** All audio is procedural using Web Audio API oscillators, filters, and gain envelopes. No audio files shipped. No external audio library.
+
+**Consequences:**
+- Positive: Zero asset weight, no loading time, no licensing issues
+- Positive: Dynamic music that adapts to game state (theme-matched)
+- Positive: Already established pattern in existing audio-manager.js
+- Negative: Limited to synthetic sounds (no realistic instruments)
+- Mitigation: Game aesthetic is sci-fi/neon, synthetic sounds fit perfectly
+
 ### ADR Template
 
 ```markdown

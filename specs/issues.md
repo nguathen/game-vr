@@ -1,6 +1,6 @@
 # Issue Tracker
 
-> Last Updated: 2026-01-22
+> Last Updated: 2026-01-29
 > Purpose: Track bugs/regressions discovered during development.
 
 ---
@@ -11,7 +11,7 @@
 |--------|-------|
 | Open | 0 |
 | In Progress | 0 |
-| Resolved | 0 |
+| Resolved | 6 |
 
 ---
 
@@ -29,7 +29,29 @@ _None_
 
 ## Recently Resolved
 
-_None_
+### ISSUE-001: [Medium] Dead code in shoot-controls shotgun ray
+**Status:** Resolved (2026-01-29)
+**Fix:** Removed dead line `raycaster.raycaster.ray.origin.toArray()` from `shoot-controls.js`.
+
+### ISSUE-002: [Medium] Dual data persistence — GameManager and AuthManager conflict
+**Status:** Resolved (2026-01-29)
+**Fix:** Stripped `GameManager` to pure state machine. Removed `gameManager` dependency from `ScoreManager`. Migrated `shop-main.js` to use `authManager`.
+
+### ISSUE-003: [Medium] Zen mode has no way to end the game
+**Status:** Resolved (2026-01-29)
+**Fix:** Added a "Quit" button (`btn-quit`) visible during gameplay in `game.html`. Wired to `endGame()` in `game-main.js`. Styled in `style.css`.
+
+### ISSUE-004: [Low] `bossRush` mode missing from `DEFAULT_PROFILE.highScores`
+**Status:** Resolved (2026-01-29)
+**Fix:** Added `bossRush: 0` to `DEFAULT_PROFILE.highScores` in `auth-manager.js`.
+
+### ISSUE-005: [Low] `init()` may be called twice
+**Status:** Resolved (2026-01-29)
+**Fix:** Added `let initialized = false` guard with `safeInit()` wrapper in both `game-main.js` and `main.js`.
+
+### ISSUE-006: [Low] Unused variable `key` in `updateHighScore`
+**Status:** Resolved (2026-01-29)
+**Fix:** Removed unused `const key = 'highScores'` from `auth-manager.js`.
 
 ---
 

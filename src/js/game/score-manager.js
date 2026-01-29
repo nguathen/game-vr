@@ -1,8 +1,7 @@
-import gameManager from '../core/game-manager.js';
-
 class ScoreManager {
   constructor() {
     this._score = 0;
+    this._shotsFired = 0;
     this._listeners = [];
   }
 
@@ -10,7 +9,12 @@ class ScoreManager {
 
   reset() {
     this._score = 0;
+    this._shotsFired = 0;
     this._notify();
+  }
+
+  recordShot() {
+    this._shotsFired++;
   }
 
   add(points) {
@@ -19,12 +23,7 @@ class ScoreManager {
   }
 
   finalize() {
-    gameManager.setHighScore(this._score);
-    return {
-      score: this._score,
-      highScore: gameManager.getHighScore(),
-      isNewHighScore: this._score >= gameManager.getHighScore(),
-    };
+    return { score: this._score, shotsFired: this._shotsFired };
   }
 
   onChange(fn) {

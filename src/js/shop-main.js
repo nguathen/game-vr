@@ -1,4 +1,4 @@
-import gameManager from './core/game-manager.js';
+import authManager from './core/auth-manager.js';
 import iapManager from './iap/iap-manager.js';
 
 function navigateTo(url) {
@@ -15,17 +15,15 @@ async function init() {
   const coinsEl = document.getElementById('shop-coins');
   const listEl = document.getElementById('product-list');
 
-  coinsEl.textContent = `Coins: ${gameManager.getCoins()}`;
+  const profile = authManager.profile;
+  coinsEl.textContent = `Coins: ${profile?.coins || 0}`;
 
-  // Show loading state
   listEl.textContent = 'Loading products...';
 
-  // Initialize IAP (connects to Meta Digital Goods or falls back to dev mode)
   await iapManager.init();
 
   listEl.textContent = '';
 
-  // Render products
   iapManager.products.forEach(product => {
     const item = document.createElement('div');
     item.className = 'product-item';
@@ -60,7 +58,7 @@ async function init() {
 
         try {
           await iapManager.purchase(product.id);
-          coinsEl.textContent = `Coins: ${gameManager.getCoins()}`;
+          coinsEl.textContent = `Coins: ${authManager.profile?.coins || 0}`;
 
           if (product.type === 'non_consumable') {
             btn.textContent = 'Owned';
@@ -83,7 +81,6 @@ async function init() {
     listEl.appendChild(item);
   });
 
-  // Back button
   document.getElementById('btn-back').addEventListener('click', () => {
     navigateTo('./index.html');
   });
@@ -105,4 +102,10 @@ function showNotification(message, type = 'info') {
   }, 3000);
 }
 
-document.addEventListener('DOMContentLoaded', init);
+authManager.waitReady().then(() => {
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+});

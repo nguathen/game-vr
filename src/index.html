@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>VR Quest Game</title>
+  <title>VR Quest Game V2</title>
   <script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
   <link rel="stylesheet" href="./css/style.css">
 </head>
@@ -13,25 +13,83 @@
 
   <!-- 2D Overlay UI -->
   <div id="overlay">
-    <div class="menu">
-      <h1>VR Quest Game</h1>
-      <p class="subtitle">Target Shooting VR</p>
+    <div class="menu main-menu-v2">
+      <h1>VR Quest</h1>
+      <p class="subtitle">Target Shooter V2</p>
+
+      <!-- Player Info Bar -->
+      <div class="player-bar">
+        <div class="player-level">
+          <span class="level-badge" id="level-badge">Lv.1</span>
+          <span class="display-name" id="display-name">Player</span>
+          <div class="xp-bar">
+            <div class="xp-fill" id="xp-fill" style="width: 0%"></div>
+          </div>
+          <span class="xp-text" id="xp-text">0 / 100 XP</span>
+        </div>
+        <div class="player-stats-row">
+          <span class="stat-mini" id="coins-display">0 Coins</span>
+          <span class="stat-mini" id="games-played">0 Games</span>
+        </div>
+      </div>
+
       <div id="premium-badge" class="premium-badge hidden">PREMIUM</div>
-      <div class="stats">
-        <div class="stat-item">
-          <span class="stat-label">High Score</span>
-          <span class="stat-value" id="high-score">0</span>
-        </div>
-        <div class="stat-item">
-          <span class="stat-label">Coins</span>
-          <span class="stat-value" id="coins-display">0</span>
+
+      <!-- Game Mode Selection -->
+      <div class="section-label">Game Mode</div>
+      <div class="mode-grid" id="mode-grid">
+        <!-- Populated by JS -->
+      </div>
+
+      <!-- Weapon Selection -->
+      <div class="section-label">Weapon</div>
+      <div class="weapon-grid" id="weapon-grid">
+        <!-- Populated by JS -->
+      </div>
+
+      <!-- Theme Selection (TASK-112) -->
+      <div class="section-label">Arena Theme</div>
+      <div class="mode-grid" id="theme-grid">
+        <!-- Populated by JS -->
+      </div>
+
+      <!-- Weapon Skins (TASK-113) -->
+      <div class="section-label">Weapon Skin</div>
+      <div class="skin-grid" id="skin-selector">
+        <!-- Populated by JS -->
+      </div>
+
+      <!-- Daily Challenge -->
+      <div class="section-label">Daily Challenge</div>
+      <div class="daily-challenge" id="daily-challenge"></div>
+
+      <!-- High Scores -->
+      <div class="section-label">High Scores</div>
+      <div class="high-scores" id="high-scores"></div>
+
+      <!-- Leaderboard -->
+      <div class="section-label">Global Leaderboard</div>
+      <div class="leaderboard-section">
+        <div class="lb-tabs" id="lb-tabs"></div>
+        <div class="leaderboard" id="leaderboard">
+          <div class="lb-list"></div>
         </div>
       </div>
+
+      <!-- Achievements -->
+      <div class="section-label">Achievements</div>
+      <div class="achievements-grid" id="achievements-grid"></div>
+
       <div class="buttons">
-        <button id="btn-play" class="btn btn-primary">Play</button>
+        <button id="btn-play" class="btn btn-primary btn-play-v2">PLAY</button>
         <button id="btn-shop" class="btn btn-secondary">Shop</button>
+        <button id="btn-stats" class="btn btn-secondary">Stats</button>
+        <button id="btn-friends" class="btn btn-secondary">Friends</button>
+        <button id="btn-settings" class="btn btn-secondary">Settings</button>
       </div>
-      <p class="hint">Click "Play" or enter VR to start</p>
+
+      <p class="hint">Select mode & weapon, then click Play</p>
+      <p class="version-tag">V2.0</p>
     </div>
   </div>
 
@@ -43,26 +101,23 @@
       </a-camera>
     </a-entity>
 
-    <!-- Environment -->
     <a-sky color="#0a0a1a"></a-sky>
     <a-plane position="0 0 0" rotation="-90 0 0" width="50" height="50" color="#0d1b2a"></a-plane>
     <a-plane position="0 0.01 0" rotation="-90 0 0" width="20" height="20"
              material="color: #1b2838; wireframe: true; opacity: 0.2"
              segments-width="20" segments-height="20"></a-plane>
 
-    <!-- Lighting -->
     <a-light type="ambient" color="#222244" intensity="0.4"></a-light>
     <a-light type="point" position="0 6 -4" intensity="1" color="#4466ff" distance="20"></a-light>
     <a-light type="point" position="-4 4 -6" intensity="0.5" color="#ff4466" distance="15"></a-light>
     <a-light type="point" position="4 4 -6" intensity="0.5" color="#44ff66" distance="15"></a-light>
 
-    <!-- Title in 3D -->
-    <a-text value="VR Quest Game" position="0 3.2 -5" align="center"
+    <a-text value="VR Quest V2" position="0 3.2 -5" align="center"
             color="#00d4ff" width="8" font="mozillavr"></a-text>
-    <a-text value="Target Shooting" position="0 2.5 -5" align="center"
+    <a-text value="Target Shooter" position="0 2.5 -5" align="center"
             color="#666688" width="4" font="mozillavr"></a-text>
 
-    <!-- Decorative floating targets (preview) -->
+    <!-- Decorative floating targets -->
     <a-sphere position="-3 2 -8" radius="0.35" material="color: #e94560; shader: flat"
               animation="property: position; to: -3 2.5 -8; dur: 2000; easing: easeInOutSine; loop: true; dir: alternate"></a-sphere>
     <a-sphere position="3 2.5 -9" radius="0.25" material="color: #2ed573; shader: flat"
@@ -74,13 +129,11 @@
     <a-sphere position="5 3 -10" radius="0.3" material="color: #a855f7; shader: flat"
               animation="property: position; to: 5 3.5 -10; dur: 2200; easing: easeInOutSine; loop: true; dir: alternate"></a-sphere>
 
-    <!-- Rotating ring -->
     <a-torus position="0 4.5 -12" radius="1.5" radius-tubular="0.03"
              material="color: #00d4ff; shader: flat; opacity: 0.3"
              animation="property: rotation; to: 360 360 0; dur: 10000; easing: linear; loop: true"></a-torus>
   </a-scene>
 
-  <script type="module" src="./js/core/game-manager.js"></script>
   <script type="module" src="./js/main.js"></script>
 </body>
 </html>

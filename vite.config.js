@@ -1,16 +1,25 @@
 import { defineConfig } from 'vite';
 import { resolve } from 'path';
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const srcDir = resolve(__dirname, 'src');
 
 export default defineConfig({
-  root: 'src',
+  root: srcDir,
   build: {
-    outDir: '../dist',
+    outDir: resolve(__dirname, 'dist'),
     emptyOutDir: true,
     rollupOptions: {
       input: {
-        main: resolve(__dirname, 'src/index.html'),
-        game: resolve(__dirname, 'src/game.html'),
-        shop: resolve(__dirname, 'src/shop.html'),
+        main: resolve(srcDir, 'index.html'),
+        game: resolve(srcDir, 'game.html'),
+        shop: resolve(srcDir, 'shop.html'),
+        stats: resolve(srcDir, 'stats.html'),
+        settings: resolve(srcDir, 'settings.html'),
+        tutorial: resolve(srcDir, 'tutorial.html'),
+        friends: resolve(srcDir, 'friends.html'),
       },
     },
   },
