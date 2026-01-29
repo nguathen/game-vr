@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VR Target Shooter - NVR Labs</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0a0a1a; color: #fff; min-height: 100vh; display: flex; flex-direction: column; align-items: center; }
+    .hero { text-align: center; padding: 80px 20px 40px; max-width: 720px; }
+    .hero h1 { font-size: 2.8em; margin-bottom: 12px; background: linear-gradient(135deg, #00d4ff, #7b2ff7); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    .hero .tagline { font-size: 1.2em; color: #aaa; margin-bottom: 40px; }
+    .store-btn { display: inline-block; padding: 16px 36px; background: linear-gradient(135deg, #7b2ff7, #00d4ff); color: #fff; text-decoration: none; border-radius: 12px; font-size: 1.1em; font-weight: 600; transition: opacity 0.2s; }
+    .store-btn:hover { opacity: 0.85; }
+    .features { max-width: 720px; padding: 40px 20px; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 24px; }
+    .feature { background: rgba(255,255,255,0.05); border-radius: 12px; padding: 24px; }
+    .feature h3 { color: #00d4ff; margin-bottom: 8px; font-size: 1.1em; }
+    .feature p { color: #999; line-height: 1.5; font-size: 0.95em; }
+    .iap { max-width: 720px; padding: 20px; text-align: center; }
+    .iap h2 { font-size: 1.5em; margin-bottom: 16px; }
+    .iap-grid { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; }
+    .iap-item { background: rgba(255,255,255,0.05); border-radius: 12px; padding: 20px 28px; min-width: 160px; }
+    .iap-item .name { font-weight: 600; margin-bottom: 4px; }
+    .iap-item .price { color: #00d4ff; font-size: 1.2em; }
+    footer { margin-top: auto; padding: 40px 20px; text-align: center; color: #555; font-size: 0.85em; }
+    footer a { color: #777; }
+  </style>
+</head>
+<body>
+  <div class="hero">
+    <h1>VR Target Shooter</h1>
+    <p class="tagline">Fast-paced VR target shooting. Test your aim, earn coins, unlock premium content.</p>
+    <a href="https://www.meta.com/experiences/" class="store-btn">Get on Meta Quest</a>
+  </div>
+
+  <div class="features">
+    <div class="feature">
+      <h3>Immersive VR</h3>
+      <p>Shoot targets in a full 360-degree VR environment built for Meta Quest.</p>
+    </div>
+    <div class="feature">
+      <h3>Precision Aiming</h3>
+      <p>Use hand tracking or controllers for intuitive, responsive shooting.</p>
+    </div>
+    <div class="feature">
+      <h3>Earn & Unlock</h3>
+      <p>Score points, collect coins, and unlock premium content through in-app purchases.</p>
+    </div>
+  </div>
+
+  <div class="iap">
+    <h2>In-App Purchases</h2>
+    <div class="iap-grid">
+      <div class="iap-item">
+        <div class="name">100 Coins</div>
+        <div class="price">$0.99</div>
+      </div>
+      <div class="iap-item">
+        <div class="name">500 Coins</div>
+        <div class="price">$3.99</div>
+      </div>
+      <div class="iap-item">
+        <div class="name">Premium Unlock</div>
+        <div class="price">$4.99</div>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    <p>&copy; 2026 NVR Labs. All rights reserved.</p>
+    <p><a href="privacy.html">Privacy Policy</a></p>
+  </footer>
+</body>
+</html>
