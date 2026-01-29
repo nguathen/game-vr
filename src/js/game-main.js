@@ -15,6 +15,7 @@ import musicManager from './core/music-manager.js';
 import { buildSummary, formatShareText, copyToClipboard } from './game/game-summary.js';
 import { showToast } from './ui/toast.js';
 import { countUp } from './ui/animations.js';
+import { tryEnterVR } from './core/vr-util.js';
 
 const COUNTDOWN_FROM = 3;
 
@@ -61,6 +62,8 @@ function init() {
   const scene = document.getElementById('game-scene');
   const selectedTheme = themeParam || authManager.profile?.selectedTheme || 'cyber';
   applyTheme(scene, selectedTheme);
+
+  tryEnterVR(scene);
 
   // Spawn ambient particles (TASK-111)
   spawnAmbientParticles(scene);

@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite src --port 3000 --open",
-    "build": "vite build src --outDir ../dist",
+    "build": "vite build && node -e \"const{cpSync}=require('fs');cpSync('public','dist',{recursive:true})\"",
     "preview": "vite preview --port 3000",
     "server": "node server/index.js",
     "start": "concurrently \"npm run dev\" \"npm run server\"",

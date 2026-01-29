@@ -8,9 +8,11 @@ const srcDir = resolve(__dirname, 'src');
 
 export default defineConfig({
   root: srcDir,
+  publicDir: resolve(__dirname, 'public'),
   build: {
     outDir: resolve(__dirname, 'dist'),
     emptyOutDir: true,
+    copyPublicDir: true,
     rollupOptions: {
       input: {
         main: resolve(srcDir, 'index.html'),

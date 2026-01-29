@@ -1,0 +1,8 @@
+[{
+  "relation": ["delegate_permission/common.handle_all_urls"],
+  "target": {
+    "namespace": "android_app",
+    "package_name": "com.nvr.iaptest",
+    "sha256_cert_fingerprints": ["54:24:86:EB:41:B7:0B:2C:59:D1:99:AD:54:77:90:8B:E3:C2:0B:6A:07:5D:7E:D7:3F:82:60:34:BD:30:48:B6"]
+  }
+}]
