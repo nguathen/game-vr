@@ -40,9 +40,10 @@ function Write-Err($msg) {
 # --- Check ADB device ---
 Write-Host "=== Quest VR Deploy ===" -ForegroundColor Cyan
 $ErrorActionPreference = "Continue"
-$devices = & $ADB devices 2>&1
+$devicesRaw = & $ADB devices 2>&1
 $ErrorActionPreference = "Stop"
-if ($devices -notmatch "\bdevice\b") {
+$devices = ($devicesRaw | Out-String)
+if ($devices -notmatch "\tdevice") {
     Write-Err "No Quest device connected. Check ADB."
     exit 1
 }
@@ -65,10 +66,12 @@ $step++
 Write-Step $step $totalSteps "Building frontend (Vite)"
 $clientDir = Join-Path $ProjectRoot "client"
 Set-Location $clientDir
+$ErrorActionPreference = "Continue"
 $buildResult = node -e "const {build} = require('vite'); build().then(() => { console.log('BUILD_OK'); process.exit(0); }).catch(e => { console.error(e.message); process.exit(1); })" 2>&1
+$ErrorActionPreference = "Stop"
 if ($LASTEXITCODE -ne 0) {
     Write-Err "Vite build failed!"
-    Write-Host $buildResult
+    Write-Host ($buildResult | Out-String)
     exit 1
 }
 Write-OK "dist/ built"
