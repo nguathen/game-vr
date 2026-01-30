@@ -1,4 +1,5 @@
 import audioManager from '../core/audio-manager.js';
+import powerUpManager from './power-up-manager.js';
 
 const WEAPONS = {
   pistol: {
@@ -80,6 +81,12 @@ class WeaponSystem {
     this._lastFireTime = Date.now();
     const weapon = this.current;
     audioManager.playWeaponFire(weapon.sound);
+
+    // Multi-shot power-up: widen spread for single-shot weapons
+    const puMultiplier = powerUpManager.getProjectileMultiplier();
+    if (puMultiplier > 1 && weapon.projectiles === 1) {
+      return { ...weapon, projectiles: puMultiplier, spread: 0.12 };
+    }
     return weapon;
   }
 

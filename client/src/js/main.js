@@ -131,7 +131,7 @@ function switchToGame() {
   gameContent.setAttribute('visible', 'true');
 
   // Show HUD
-  ['crosshair', 'crosshair-outer', 'crosshair-dot', 'hud-score', 'hud-timer', 'hud-combo', 'hud-lives', 'hud-weapon', 'hud-level', 'game-cursor'].forEach(id => {
+  ['crosshair', 'crosshair-outer', 'crosshair-dot', 'hud-score', 'hud-timer', 'hud-combo', 'hud-lives', 'hud-weapon', 'hud-level', 'hud-powerup', 'game-cursor'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.setAttribute('visible', 'true');
   });
@@ -180,7 +180,7 @@ function switchToMenu() {
   menuContent.setAttribute('visible', 'true');
 
   // Hide HUD
-  ['crosshair', 'crosshair-outer', 'crosshair-dot', 'hud-score', 'hud-timer', 'hud-combo', 'hud-lives', 'hud-weapon', 'hud-level', 'game-cursor'].forEach(id => {
+  ['crosshair', 'crosshair-outer', 'crosshair-dot', 'hud-score', 'hud-timer', 'hud-combo', 'hud-lives', 'hud-weapon', 'hud-level', 'hud-powerup', 'game-cursor'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.setAttribute('visible', 'false');
   });

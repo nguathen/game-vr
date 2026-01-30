@@ -11,7 +11,7 @@
 | Status | Count |
 |--------|-------|
 | In Progress | 0 |
-| Pending | 7 |
+| Pending | 9 |
 | Completed | 29 |
 
 > Note: V1 tasks (TASK-010~020) completed. V2 Phase 1 (TASK-101~105) completed + all 6 issues resolved.
@@ -28,6 +28,200 @@ _None_
 ---
 
 ## Pending
+
+### TASK-133: Power-Up System
+**Priority:** High
+**Status:** Completed ✅ (2026-01-30)
+**Assigned:** /dev
+**Dependencies:** None
+
+#### Description
+Add a power-up system where special targets drop temporary buffs. Three power-up types: Double Points, Freeze Time, Multi-shot.
+
+#### Design
+
+**New file:** `client/src/js/game/power-up-manager.js`
+
+```js
+const POWER_UPS = {
+  doublePoints: { duration: 10000, color: '#00ff88', icon: '2X', label: 'DOUBLE POINTS!' },
+  freezeTime:   { duration: 5000,  color: '#00d4ff', icon: '❄️', label: 'TIME FREEZE!' },
+  multiShot:    { duration: 10000, color: '#ff44aa', icon: '💥', label: 'MULTI-SHOT!' },
+};
+```
+
+**PowerUpManager class:**
+- `_activePowerUps: Map<string, { timeout, startTime }>` — tracks active buffs
+- `activate(type)` — starts buff, sets timeout for deactivation, emits event
+- `deactivate(type)` — removes buff, emits event
+- `isActive(type)` → boolean
+- `getMultiplier()` → returns `2` if doublePoints active, else `1`
+- `getProjectileCount(base)` → returns `base * 3` if multiShot active, else `base`
+- `isTimeFrozen()` → boolean
+- `reset()` — clears all active power-ups
+
+**New target type in `target-system.js`:**
+```js
+// Add to TARGET_TYPES:
+powerup: { weight: 5, points: 10, radius: 0.35, geometry: 'a-sphere', color: '#00ffaa', hp: 1, speed: 1.5, lifetime: 3000, coins: 0 }
+
+// Add to TARGET_MATERIALS:
+powerup: { metalness: 0.9, roughness: 0.1, emissive: '#00ffaa', emissiveIntensity: 1.0 }
+```
+
+**Power-up spawn logic** (in `_onTargetHit`):
+- When a `powerup` target is hit, randomly pick one of 3 power-up types
+- Call `powerUpManager.activate(type)`
+- Show floating label with power-up name (reuse `_spawnDamageNumber` with custom text)
+
+**Integration points:**
+
+1. **`target-system.js` → `_onTargetHit()`:**
+   - After scoring: `const multiplier = ... * powerUpManager.getMultiplier()`
+   - If target type is `powerup`: `powerUpManager.activate(randomPowerUp)`
+
+2. **`weapon-system.js` → `fire()`:**
+   - Return modified projectile count: `weapon.projectiles * powerUpManager.getProjectileCount(1)` when multiShot active
+
+3. **`game-main.js` → timer interval:**
+   - Skip `timeLeft--` when `powerUpManager.isTimeFrozen()`
+
+4. **`game-main.js` → HUD:**
+   - Add `#hud-powerup` text element to show active power-up name + remaining time
+   - Update every 100ms while power-up is active
+   - Position: `0 0.12 -1` (below combo, above crosshair)
+
+5. **`audio-manager.js`:**
+   - Add `playPowerUp()` — ascending chime (achievement-like but shorter)
+   - Add `playPowerUpEnd()` — subtle fade-out tone
+
+6. **`index.html`:**
+   - Add `<a-text id="hud-powerup" ...>` inside `<a-camera>`
+
+7. **Visual feedback:**
+   - Power-up target: pulsing glow animation (emissiveIntensity oscillate 0.5-1.0)
+   - On activation: screen flash green + power-up label float up
+   - Power-up target spins (rotation animation)
+
+#### Acceptance Criteria
+- [ ] New `powerup` target type spawns with 5% weight
+- [ ] Power-up target has distinct visual (green glow, spinning, pulsing)
+- [ ] Hitting power-up target activates random buff
+- [ ] Double Points: score ×2 for 10 seconds
+- [ ] Freeze Time: timer pauses for 5 seconds
+- [ ] Multi-shot: weapon fires 3× projectiles for 10 seconds
+- [ ] HUD shows active power-up name + countdown
+- [ ] Power-up SFX on activate/deactivate
+- [ ] PowerUpManager.reset() called on game start/end
+- [ ] Works on Quest 2
+
+---
+
+### TASK-134: Slow-Motion Hit Effect (Combo 10+)
+**Priority:** High
+**Status:** Completed ✅ (2026-01-30)
+**Assigned:** /dev
+**Dependencies:** TASK-133 (shares game-main.js changes)
+
+#### Description
+When combo reaches 10+, the next hit triggers a 0.3s slow-motion effect for dramatic feel.
+
+#### Implementation
+
+**In `target-system.js` → `_onTargetHit()`:**
+```js
+// After combo increment, if combo >= 10:
+if (this._combo >= 10 && !isDecoy) {
+  this._triggerSlowMotion();
+}
+```
+
+**`_triggerSlowMotion()` method in TargetSystem:**
+```js
+_triggerSlowMotion() {
+  if (this._slowMoActive) return;
+  this._slowMoActive = true;
+
+  // 1. Slow all target animations to 0.3x speed
+  this._targets.forEach(el => {
+    ['animation__move', 'animation__float', 'animation__rotate'].forEach(anim => {
+      if (el.getAttribute(anim)) {
+        const current = el.getAttribute(anim);
+        el.setAttribute(anim, 'dur', current.dur * 3);
+      }
+    });
+  });
+
+  // 2. Dispatch event for game-main to handle timer/HUD
+  document.dispatchEvent(new CustomEvent('slow-motion', { detail: { active: true } }));
+
+  // 3. Restore after 300ms
+  setTimeout(() => {
+    this._slowMoActive = false;
+    this._targets.forEach(el => {
+      ['animation__move', 'animation__float', 'animation__rotate'].forEach(anim => {
+        if (el.getAttribute(anim)) {
+          const current = el.getAttribute(anim);
+          el.setAttribute(anim, 'dur', current.dur / 3);
+        }
+      });
+    });
+    document.dispatchEvent(new CustomEvent('slow-motion', { detail: { active: false } }));
+  }, 300);
+}
+```
+
+**In `game-main.js`:**
+```js
+// Listen for slow-motion event
+document.addEventListener('slow-motion', (e) => {
+  if (e.detail.active) {
+    // Visual: add blue tint overlay
+    _showSlowMoOverlay();
+    // Audio: lower pitch of background music temporarily
+    musicManager.setPlaybackRate(0.5);
+  } else {
+    _hideSlowMoOverlay();
+    musicManager.setPlaybackRate(1.0);
+  }
+});
+```
+
+**`_showSlowMoOverlay()` / `_hideSlowMoOverlay()`:**
+- Create/show a full-screen `div` with `background: radial-gradient(transparent 50%, rgba(0, 100, 255, 0.15))`
+- CSS transition opacity 0→1 in 50ms, 1→0 in 100ms
+- Add CSS class `slow-mo-active` to body for potential other effects
+
+**In `music-manager.js`:**
+- Add `setPlaybackRate(rate)` method — adjusts all active oscillator `playbackRate` or detune
+- Simple approach: adjust master gain + create a low-pass filter effect during slow-mo
+
+**In `audio-manager.js`:**
+- Add `playSlowMoHit()` — deep reverb hit sound (low frequency sine with long decay)
+
+**In `client/src/css/style.css`:**
+```css
+.slow-mo-overlay {
+  position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+  background: radial-gradient(ellipse at center, transparent 40%, rgba(0, 100, 255, 0.12) 100%);
+  pointer-events: none; z-index: 50;
+  opacity: 0; transition: opacity 0.05s ease-in;
+}
+.slow-mo-overlay.active { opacity: 1; }
+```
+
+#### Acceptance Criteria
+- [ ] At combo 10+, each hit triggers 0.3s slow-motion
+- [ ] All target animations slow to 0.3× speed during slow-mo
+- [ ] Blue tint overlay appears during slow-mo
+- [ ] Background music pitch drops during slow-mo
+- [ ] Special deep hit sound plays
+- [ ] Slow-mo doesn't stack (only one at a time)
+- [ ] Timer continues normally (slow-mo is visual only, doesn't affect game time)
+- [ ] Performance OK on Quest 2 (no frame drops)
+- [ ] Respects `reducedMotion` setting (skip overlay if enabled)
+
+---
 
 ### TASK-132: Quest 2 build & run — portable deploy script
 **Priority:** High

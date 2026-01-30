@@ -125,6 +125,20 @@ class MusicManager {
     this._intervals.push(arpInterval);
   }
 
+  setPlaybackRate(rate) {
+    if (!this._playing || !this._masterGain) return;
+    try {
+      const ctx = audioManager._getCtx();
+      // Detune all oscillators to simulate pitch shift
+      const cents = Math.log2(rate) * 1200;
+      this._nodes.forEach(node => {
+        if (node instanceof OscillatorNode) {
+          node.detune.setValueAtTime(cents, ctx.currentTime);
+        }
+      });
+    } catch (e) { /* ignore */ }
+  }
+
   stopMusic() {
     this._playing = false;
 

@@ -744,6 +744,23 @@ body {
   opacity: 1;
 }
 
+/* Slow-Motion Overlay (TASK-134) */
+.slow-mo-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: radial-gradient(ellipse at center, transparent 40%, rgba(0, 100, 255, 0.12) 100%);
+  pointer-events: none;
+  z-index: 50;
+  opacity: 0;
+  transition: opacity 0.05s ease-in;
+}
+.slow-mo-overlay.active {
+  opacity: 1;
+}
+
 /* Skin Grid (TASK-113) */
 .skin-grid {
   display: flex;

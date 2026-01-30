@@ -1,6 +1,7 @@
 import scoreManager from './score-manager.js';
 import audioManager from '../core/audio-manager.js';
 import authManager from '../core/auth-manager.js';
+import powerUpManager from './power-up-manager.js';
 import { getSettings } from './settings-util.js';
 
 const BASE_POINTS = 10;
@@ -13,6 +14,7 @@ const TARGET_MATERIALS = {
   heavy:    { metalness: 0.9, roughness: 0.1, emissive: '#ff1111', emissiveIntensity: 0.5 },
   bonus:    { metalness: 0.7, roughness: 0.2, emissive: '#ffd700', emissiveIntensity: 0.8 },
   decoy:    { metalness: 0.5, roughness: 0.5, emissive: '#440000', emissiveIntensity: 0.3 },
+  powerup:  { metalness: 0.9, roughness: 0.1, emissive: '#00ffaa', emissiveIntensity: 1.0 },
 };
 
 const TARGET_TYPES = {
@@ -21,6 +23,7 @@ const TARGET_TYPES = {
   heavy:     { weight: 15, points: 30, radius: 0.4,  geometry: 'a-box', color: '#ff3333', hp: 2, speed: 0, lifetime: null, coins: 0 },
   bonus:     { weight: 8,  points: 50, radius: 0.25, geometry: 'a-sphere', color: '#ffd700', hp: 1, speed: 0, lifetime: 2000, coins: 5 },
   decoy:     { weight: 7,  points: -10, radius: 0.3, geometry: 'a-sphere', color: '#882222', hp: 1, speed: 0, lifetime: null, coins: 0 },
+  powerup:   { weight: 5,  points: 10,  radius: 0.35, geometry: 'a-sphere', color: '#00ffaa', hp: 1, speed: 1.5, lifetime: 3000, coins: 0 },
 };
 
 class TargetSystem {
@@ -43,6 +46,8 @@ class TargetSystem {
     this._bossMode = config.bossMode || false;
     this._wave = 0;
     this._coinsEarned = 0;
+    this._slowMoActive = false;
+    this._slowMoTimeout = null;
   }
 
   set onComboChange(fn) { this._onComboChange = fn; }
@@ -78,6 +83,11 @@ class TargetSystem {
     if (this._spawnTimer) {
       clearInterval(this._spawnTimer);
       this._spawnTimer = null;
+    }
+    if (this._slowMoTimeout) {
+      clearTimeout(this._slowMoTimeout);
+      this._slowMoTimeout = null;
+      this._slowMoActive = false;
     }
     this._clearAll();
   }
@@ -160,6 +170,18 @@ class TargetSystem {
       }
     }
 
+    // Power-up target: spinning + pulsing glow
+    if (typeId === 'powerup') {
+      el.setAttribute('animation__rotate', {
+        property: 'rotation', to: '360 360 0',
+        dur: 2000, easing: 'linear', loop: true,
+      });
+      el.setAttribute('animation__glow', {
+        property: 'material.emissiveIntensity', from: 0.5, to: 1.2,
+        dur: 600, loop: true, dir: 'alternate', easing: 'easeInOutSine',
+      });
+    }
+
     el._targetType = typeId;
     el._targetPoints = type.points;
     el._targetCoins = type.coins;
@@ -209,18 +231,31 @@ class TargetSystem {
         this._onComboChange?.(0);
       }, 2000);
 
-      const multiplier = Math.min(this._combo, 5);
-      const points = basePoints * multiplier * damage;
+      const comboMultiplier = Math.min(this._combo, 5);
+      const powerUpMultiplier = powerUpManager.getMultiplier();
+      const points = basePoints * comboMultiplier * damage * powerUpMultiplier;
       scoreManager.add(points);
       this._onComboChange?.(this._combo);
 
       audioManager.playHit();
       if (this._combo >= 2) audioManager.playCombo(this._combo);
 
+      // Slow-motion at combo 10+
+      if (this._combo >= 10) {
+        this._triggerSlowMotion();
+      }
+
+      // Power-up target: activate random power-up
+      if (el._targetType === 'powerup') {
+        const pu = powerUpManager.activateRandom();
+        this._spawnDamageNumber(pos, 0, pu.config.color, pu.config.label);
+      }
+
       // Damage number
-      const comboText = multiplier > 1 ? ` x${multiplier}` : '';
-      const color = el._targetType === 'bonus' ? '#ffd700' : multiplier > 1 ? '#00d4ff' : '#ffffff';
-      this._spawnDamageNumber(pos, points, color, comboText);
+      const comboText = comboMultiplier > 1 ? ` x${comboMultiplier}` : '';
+      const puText = powerUpMultiplier > 1 ? ' 2X' : '';
+      const color = el._targetType === 'bonus' ? '#ffd700' : el._targetType === 'powerup' ? '#00ffaa' : comboMultiplier > 1 ? '#00d4ff' : '#ffffff';
+      this._spawnDamageNumber(pos, points, color, comboText + puText);
       this._flashScreen('hit');
 
       // Bonus coins
@@ -235,6 +270,38 @@ class TargetSystem {
 
     this._targets.delete(el);
     if (el._expireTimeout) clearTimeout(el._expireTimeout);
+  }
+
+  _triggerSlowMotion() {
+    if (this._slowMoActive) return;
+    this._slowMoActive = true;
+
+    // Store original animation durations and slow them
+    const animData = [];
+    this._targets.forEach(el => {
+      ['animation__move', 'animation__float', 'animation__rotate'].forEach(name => {
+        const attr = el.getAttribute(name);
+        if (attr && attr.dur) {
+          const origDur = attr.dur;
+          animData.push({ el, name, origDur });
+          el.setAttribute(name, 'dur', origDur * 3);
+        }
+      });
+    });
+
+    audioManager.playSlowMoHit();
+    document.dispatchEvent(new CustomEvent('slow-motion', { detail: { active: true } }));
+
+    // Restore after 300ms
+    this._slowMoTimeout = setTimeout(() => {
+      this._slowMoActive = false;
+      animData.forEach(({ el, name, origDur }) => {
+        if (el.parentNode) {
+          el.setAttribute(name, 'dur', origDur);
+        }
+      });
+      document.dispatchEvent(new CustomEvent('slow-motion', { detail: { active: false } }));
+    }, 300);
   }
 
   _spawnDamageNumber(pos, points, color, suffix) {

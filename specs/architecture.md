@@ -74,6 +74,7 @@ vr/
 │   │   │   │   ├── daily-challenge.js # Daily challenge progress
 │   │   │   │   ├── environment-themes.js # Theme visuals
 │   │   │   │   ├── game-summary.js    # End-game stats builder
+│   │   │   │   ├── power-up-manager.js # Power-up buff system
 │   │   │   │   └── settings-util.js   # Settings read helper
 │   │   │   ├── iap/
 │   │   │   │   ├── iap-manager.js     # Purchase flow (Meta DG / dev)
@@ -147,6 +148,20 @@ vr/
 - Track current score, high score
 - Coins balance (dùng cho IAP items)
 - Persist via localStorage
+
+### PowerUpManager (power-up-manager.js)
+- Manages temporary buffs: Double Points (10s), Freeze Time (5s), Multi-shot (10s)
+- Activated when player hits `powerup` target type (5% spawn weight)
+- Integrates with: TargetSystem (score multiplier), WeaponSystem (projectile count), game-main (timer freeze)
+- HUD display shows active power-up name + remaining time
+- `reset()` on game start/end
+
+### Slow-Motion System (in target-system.js)
+- Triggered at combo ≥ 10 on each hit
+- 300ms duration: slows target animations to 0.3× speed
+- Visual: blue tint radial overlay
+- Audio: music pitch drops to 0.5×
+- Non-stacking, visual-only (doesn't affect game timer)
 
 ---
 

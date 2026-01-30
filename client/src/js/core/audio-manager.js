@@ -303,6 +303,74 @@ class AudioManager {
     osc.stop(now + 0.12);
   }
 
+  playSlowMoHit() {
+    if (!this._enabled) return;
+    const ctx = this._getCtx();
+    const now = ctx.currentTime;
+
+    // Deep reverb impact
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(120, now);
+    osc.frequency.exponentialRampToValueAtTime(40, now + 0.4);
+    gain.gain.setValueAtTime(0.25, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
+    osc.connect(gain).connect(this.destination);
+    osc.start(now);
+    osc.stop(now + 0.5);
+
+    // Shimmer overtone
+    const osc2 = ctx.createOscillator();
+    const gain2 = ctx.createGain();
+    osc2.type = 'sine';
+    osc2.frequency.setValueAtTime(1200, now);
+    osc2.frequency.exponentialRampToValueAtTime(600, now + 0.3);
+    gain2.gain.setValueAtTime(0.06, now);
+    gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+    osc2.connect(gain2).connect(this.destination);
+    osc2.start(now);
+    osc2.stop(now + 0.35);
+  }
+
+  playPowerUp() {
+    if (!this._enabled) return;
+    const ctx = this._getCtx();
+    const now = ctx.currentTime;
+
+    // Bright ascending chime
+    [880, 1100, 1320, 1760].forEach((freq, i) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      const t = now + i * 0.06;
+      osc.frequency.setValueAtTime(freq, t);
+      gain.gain.setValueAtTime(0.18, t);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.15);
+      osc.connect(gain).connect(this.destination);
+      osc.start(t);
+      osc.stop(t + 0.15);
+    });
+  }
+
+  playPowerUpEnd() {
+    if (!this._enabled) return;
+    const ctx = this._getCtx();
+    const now = ctx.currentTime;
+
+    // Subtle descending fade
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(660, now);
+    osc.frequency.exponentialRampToValueAtTime(330, now + 0.25);
+    gain.gain.setValueAtTime(0.1, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+    osc.connect(gain).connect(this.destination);
+    osc.start(now);
+    osc.stop(now + 0.3);
+  }
+
   playSelect() {
     if (!this._enabled) return;
     const ctx = this._getCtx();

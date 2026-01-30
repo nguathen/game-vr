@@ -13,6 +13,7 @@ import { getSkinOverrides } from './game/weapon-skins.js';
 import { getSettings } from './game/settings-util.js';
 import musicManager from './core/music-manager.js';
 import { buildSummary } from './game/game-summary.js';
+import powerUpManager from './game/power-up-manager.js';
 
 const COUNTDOWN_FROM = 3;
 
@@ -38,7 +39,7 @@ export function startGame({ mode, weapon, theme, onReturnToMenu }) {
 }
 
 // DOM refs (set once)
-let _hudScore, _hudTimer, _hudCombo, _hudLives, _hudWeapon, _hudLevel;
+let _hudScore, _hudTimer, _hudCombo, _hudLives, _hudWeapon, _hudLevel, _hudPowerup;
 let _scene, _btnQuitVr;
 
 function _initOnce() {
@@ -48,6 +49,7 @@ function _initOnce() {
   _hudLives = document.getElementById('hud-lives');
   _hudWeapon = document.getElementById('hud-weapon');
   _hudLevel = document.getElementById('hud-level');
+  _hudPowerup = document.getElementById('hud-powerup');
   _scene = document.getElementById('scene');
   _btnQuitVr = document.getElementById('btn-quit-vr');
 
@@ -85,6 +87,37 @@ function _initOnce() {
 
   // Spawn ambient particles once
   _spawnAmbientParticles(_scene);
+
+  // Slow-motion overlay handler
+  document.addEventListener('slow-motion', (e) => {
+    const settings = getSettings();
+    if (settings.reducedMotion) return;
+
+    if (e.detail.active) {
+      _showSlowMoOverlay();
+      musicManager.setPlaybackRate(0.5);
+    } else {
+      _hideSlowMoOverlay();
+      musicManager.setPlaybackRate(1.0);
+    }
+  });
+}
+
+function _showSlowMoOverlay() {
+  let overlay = document.getElementById('slow-mo-overlay');
+  if (!overlay) {
+    overlay = document.createElement('div');
+    overlay.id = 'slow-mo-overlay';
+    overlay.className = 'slow-mo-overlay';
+    document.body.appendChild(overlay);
+  }
+  void overlay.offsetWidth;
+  overlay.classList.add('active');
+}
+
+function _hideSlowMoOverlay() {
+  const overlay = document.getElementById('slow-mo-overlay');
+  if (overlay) overlay.classList.remove('active');
 }
 
 function _initRound(themeParam) {
@@ -118,6 +151,22 @@ function _initRound(themeParam) {
   }
 
   _updateLivesDisplay();
+
+  // Power-up HUD updates
+  powerUpManager.onUpdate = (display) => {
+    if (!_hudPowerup) return;
+    if (!display) {
+      _hudPowerup.setAttribute('value', '');
+      return;
+    }
+    const secs = (display.remaining / 1000).toFixed(1);
+    _hudPowerup.setAttribute('value', `${display.label} ${secs}s`);
+    _hudPowerup.setAttribute('color', display.color);
+  };
+
+  powerUpManager.onDeactivate = () => {
+    if (_hudPowerup) _hudPowerup.setAttribute('value', '');
+  };
 
   scoreManager.onChange(score => {
     _hudScore.setAttribute('value', `Score: ${score}`);
@@ -288,6 +337,7 @@ let _selectedTheme = 'cyber';
 
 function startRound() {
   scoreManager.reset();
+  powerUpManager.reset();
   const currentMode = gameModeManager.current;
   timeLeft = currentMode.duration;
   gameModeManager.startRound();
@@ -317,6 +367,10 @@ function startRound() {
   if (timerInterval) clearInterval(timerInterval);
   if (timeLeft !== Infinity) {
     timerInterval = setInterval(() => {
+      if (powerUpManager.isTimeFrozen()) {
+        _hudTimer.setAttribute('color', '#00d4ff');
+        return;
+      }
       timeLeft--;
       _hudTimer.setAttribute('value', String(timeLeft));
 
@@ -350,6 +404,7 @@ async function endGame() {
   if (_btnQuitVr) _btnQuitVr.setAttribute('visible', 'false');
   gameManager.changeState(GameState.GAME_OVER);
   targetSystem.stop();
+  powerUpManager.reset();
   musicManager.stopMusic();
   audioManager.playGameOver();
 
@@ -409,7 +464,7 @@ async function endGame() {
     hudGameover.setAttribute('visible', 'true');
 
     // Hide HUD elements during game over display
-    ['hud-score', 'hud-timer', 'hud-combo', 'hud-lives', 'hud-weapon', 'hud-level'].forEach(id => {
+    ['hud-score', 'hud-timer', 'hud-combo', 'hud-lives', 'hud-weapon', 'hud-level', 'hud-powerup'].forEach(id => {
       const el = document.getElementById(id);
       if (el) el.setAttribute('visible', 'false');
     });
