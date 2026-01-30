@@ -12,9 +12,7 @@ import { applyTheme } from './game/environment-themes.js';
 import { getSkinOverrides } from './game/weapon-skins.js';
 import { getSettings } from './game/settings-util.js';
 import musicManager from './core/music-manager.js';
-import { buildSummary, formatShareText, copyToClipboard } from './game/game-summary.js';
-import { showToast } from './ui/toast.js';
-import { countUp } from './ui/animations.js';
+import { buildSummary } from './game/game-summary.js';
 
 const COUNTDOWN_FROM = 3;
 
@@ -41,7 +39,7 @@ export function startGame({ mode, weapon, theme, onReturnToMenu }) {
 
 // DOM refs (set once)
 let _hudScore, _hudTimer, _hudCombo, _hudLives, _hudWeapon, _hudLevel;
-let _gameOverOverlay, _countdownOverlay, _countdownNumber, _scene, _btnQuit, _btnQuitVr;
+let _scene, _btnQuitVr;
 
 function _initOnce() {
   _hudScore = document.getElementById('hud-score');
@@ -50,24 +48,15 @@ function _initOnce() {
   _hudLives = document.getElementById('hud-lives');
   _hudWeapon = document.getElementById('hud-weapon');
   _hudLevel = document.getElementById('hud-level');
-  _gameOverOverlay = document.getElementById('game-over-overlay');
-  _countdownOverlay = document.getElementById('countdown-overlay');
-  _countdownNumber = document.getElementById('countdown-number');
   _scene = document.getElementById('scene');
-  _btnQuit = document.getElementById('btn-quit');
   _btnQuitVr = document.getElementById('btn-quit-vr');
 
-  // One-time event listeners
-  if (_btnQuit) {
-    _btnQuit.addEventListener('click', () => endGame());
-  }
+  // VR Quit button
   if (_btnQuitVr) {
     const vrPlane = _btnQuitVr.querySelector('a-plane');
     if (vrPlane) {
       const handleQuit = () => {
         endGame();
-        // In VR, game-over overlay is 2D (invisible), so return to menu directly
-        setTimeout(() => { if (_onReturnToMenu) _onReturnToMenu(); }, 300);
       };
       vrPlane.addEventListener('click', handleQuit);
       vrPlane.addEventListener('hit', handleQuit);
@@ -81,24 +70,6 @@ function _initOnce() {
       });
     }
   }
-
-  document.getElementById('btn-retry').addEventListener('click', () => {
-    _gameOverOverlay.classList.add('hidden');
-    const m = gameModeManager.current;
-    targetSystem.configure({
-      spawnInterval: m.spawnInterval,
-      maxTargets: m.maxTargets,
-      targetLifetime: m.targetLifetime,
-      bossMode: m.id === 'bossRush',
-    });
-    gameModeManager.startRound();
-    _updateLivesDisplay();
-    _startCountdown();
-  });
-
-  document.getElementById('btn-menu').addEventListener('click', () => {
-    if (_onReturnToMenu) _onReturnToMenu();
-  });
 
   // Track shots for accuracy (VR triggers and flat-screen clicks)
   document.addEventListener('shot-fired', () => {
@@ -272,11 +243,7 @@ function _applyGameSettings(settings) {
 }
 
 function _startCountdown() {
-  _countdownOverlay.classList.remove('hidden');
   let count = COUNTDOWN_FROM;
-  _countdownNumber.textContent = count;
-
-  // 3D countdown for VR
   const hudCountdown = document.getElementById('hud-countdown');
   if (hudCountdown) {
     hudCountdown.setAttribute('value', String(count));
@@ -287,7 +254,6 @@ function _startCountdown() {
   const countInterval = setInterval(() => {
     count--;
     if (count > 0) {
-      _countdownNumber.textContent = count;
       if (hudCountdown) {
         hudCountdown.setAttribute('value', String(count));
         hudCountdown.setAttribute('animation__pop', {
@@ -297,7 +263,6 @@ function _startCountdown() {
       }
       audioManager.playCountdownBeep();
     } else {
-      _countdownNumber.textContent = 'GO!';
       if (hudCountdown) {
         hudCountdown.setAttribute('value', 'GO!');
         hudCountdown.setAttribute('color', '#ffaa00');
@@ -309,7 +274,6 @@ function _startCountdown() {
       audioManager.playGo();
       clearInterval(countInterval);
       setTimeout(() => {
-        _countdownOverlay.classList.add('hidden');
         if (hudCountdown) {
           hudCountdown.setAttribute('visible', 'false');
           hudCountdown.setAttribute('color', '#00ff88');
@@ -328,7 +292,6 @@ function startRound() {
   timeLeft = currentMode.duration;
   gameModeManager.startRound();
   gameManager.changeState(GameState.PLAYING);
-  if (_btnQuit) _btnQuit.classList.remove('hidden');
   if (_btnQuitVr) _btnQuitVr.setAttribute('visible', 'true');
   targetSystem.start();
 
@@ -384,7 +347,6 @@ function startRound() {
 
 async function endGame() {
   if (timerInterval) clearInterval(timerInterval);
-  if (_btnQuit) _btnQuit.classList.add('hidden');
   if (_btnQuitVr) _btnQuitVr.setAttribute('visible', 'false');
   gameManager.changeState(GameState.GAME_OVER);
   targetSystem.stop();
@@ -430,80 +392,35 @@ async function endGame() {
 
   const newAchievements = await checkAchievements();
 
-  // Score display with count-up
-  const scoreEl = document.getElementById('final-score');
-  scoreEl.textContent = '0';
-  countUp(scoreEl, 0, result.score, 800);
-  setTimeout(() => {
-    scoreEl.textContent = result.score.toLocaleString();
-  }, 900);
-
-  // High score badge
-  const highBadge = document.getElementById('new-high-badge');
-  const highScoreEl = document.getElementById('final-high-score');
-  if (isNewHigh) {
-    if (highBadge) highBadge.classList.remove('hidden');
-    highScoreEl.textContent = '';
-    highScoreEl.style.color = '#ffd700';
-  } else {
-    if (highBadge) highBadge.classList.add('hidden');
-    const hs = authManager.profile?.highScores?.[currentMode.id] || 0;
-    const diff = result.score - hs;
-    highScoreEl.textContent = diff >= 0 ? `High Score: ${hs}` : `High Score: ${hs} (${diff})`;
-    highScoreEl.style.color = '#888';
-  }
-
-  // Stat boxes
-  const statTargets = document.getElementById('stat-targets');
-  const statCombo = document.getElementById('stat-combo');
-  const statAccuracy = document.getElementById('stat-accuracy');
-  if (statTargets) statTargets.textContent = targetSystem.targetsHit;
-  if (statCombo) statCombo.textContent = `x${targetSystem.bestCombo}`;
-  if (statAccuracy) statAccuracy.textContent = `${summary.accuracy}%`;
-
-  // XP display + bar
-  const xpEl = document.getElementById('final-xp');
-  if (xpEl) {
-    xpEl.textContent = `+${xpEarned} XP`;
-    if (levelResult.leveledUp) {
-      xpEl.textContent += ` — LEVEL UP! Lv.${levelResult.newLevel}`;
-      xpEl.style.color = '#ffd700';
-      audioManager.playLevelUp();
-    } else {
-      xpEl.style.color = '#00d4ff';
-    }
-  }
-  const xpFill = document.getElementById('xp-fill-go');
-  if (xpFill) {
-    const profile2 = authManager.profile;
-    const xpForLevel = (profile2.level || 1) * 100;
-    const currentXp = (profile2.xp || 0) % xpForLevel;
-    const pct = Math.min(100, (currentXp / xpForLevel) * 100);
-    xpFill.style.width = '0%';
-    setTimeout(() => { xpFill.style.width = pct + '%'; }, 100);
-  }
-
-  if (challengeResult.justCompleted) {
-    showToast(`Challenge Complete! +${challengeResult.challenge.rewardXp} XP +${challengeResult.challenge.rewardCoins} Coins`, 'success');
-  }
-
-  newAchievements.forEach((ach, i) => {
-    setTimeout(() => showToast(`${ach.icon} ${ach.name} unlocked! +${ach.rewardXp} XP`, 'achievement'), 500 + i * 800);
-  });
-
   if (levelResult.leveledUp) {
-    showToast(`Level Up! You are now Lv.${levelResult.newLevel}`, 'achievement');
+    audioManager.playLevelUp();
   }
 
-  const shareBtn = document.getElementById('btn-share');
-  if (shareBtn) shareBtn.onclick = async () => {
-    summary.isNewHigh = isNewHigh;
-    const text = formatShareText(summary);
-    const ok = await copyToClipboard(text);
-    showToast(ok ? 'Copied to clipboard!' : 'Could not copy', ok ? 'success' : 'error');
-  };
+  // VR: show 3D game over HUD and auto-return to menu
+  const hudGameover = document.getElementById('hud-gameover');
+  if (hudGameover) {
+    const goScore = document.getElementById('hud-go-score');
+    const goStats = document.getElementById('hud-go-stats');
+    const goTitle = document.getElementById('hud-go-title');
+    if (goScore) goScore.setAttribute('value', `Score: ${result.score}`);
+    if (goStats) goStats.setAttribute('value', `Targets: ${targetSystem.targetsHit}  |  Combo: x${targetSystem.bestCombo}  |  Acc: ${summary.accuracy}%`);
+    if (goTitle && isNewHigh) goTitle.setAttribute('value', 'NEW HIGH SCORE!');
+    if (goTitle && isNewHigh) goTitle.setAttribute('color', '#ffd700');
+    hudGameover.setAttribute('visible', 'true');
 
-  _gameOverOverlay.classList.remove('hidden');
+    // Hide HUD elements during game over display
+    ['hud-score', 'hud-timer', 'hud-combo', 'hud-lives', 'hud-weapon', 'hud-level'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.setAttribute('visible', 'false');
+    });
+
+    setTimeout(() => {
+      hudGameover.setAttribute('visible', 'false');
+      // Reset title for next game
+      if (goTitle) { goTitle.setAttribute('value', 'GAME OVER'); goTitle.setAttribute('color', '#ff4444'); }
+      if (_onReturnToMenu) _onReturnToMenu();
+    }, 4000);
+  }
 }
 
 // SPA: game is started via startGame() exported above, called from main.js

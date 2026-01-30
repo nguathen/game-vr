@@ -11,45 +11,36 @@ AFRAME.registerComponent('shoot-controls', {
 
   init() {
     this._onTrigger = this._onTrigger.bind(this);
-    const events = ['triggerdown', 'selectstart', 'gripdown', 'mousedown', 'click'];
-    events.forEach(e => this.el.addEventListener(e, (evt) => {
-      console.log(`[SHOOT] Event: ${e}, hand: ${this.data.hand}`);
-      this._onTrigger();
-    }));
-    console.log(`[SHOOT] init done, hand: ${this.data.hand}, el:`, this.el.id);
+    ['triggerdown', 'selectstart', 'gripdown', 'mousedown', 'click'].forEach(e => {
+      this.el.addEventListener(e, this._onTrigger);
+    });
   },
 
   remove() {
-    this.el.removeEventListener('triggerdown', this._onTrigger);
-    this.el.removeEventListener('selectstart', this._onTrigger);
-    this.el.removeEventListener('gripdown', this._onTrigger);
+    ['triggerdown', 'selectstart', 'gripdown', 'mousedown', 'click'].forEach(e => {
+      this.el.removeEventListener(e, this._onTrigger);
+    });
     if (this._flashTimeout) clearTimeout(this._flashTimeout);
   },
 
   _getWeapon() {
-    // Access weapon system if available (loaded as ES module)
     return window.__weaponSystem?.current || null;
   },
 
   _onTrigger() {
     const weapon = this._getWeapon();
-    console.log(`[SHOOT] _onTrigger called, weapon:`, weapon?.name, 'weaponSys:', !!window.__weaponSystem);
 
     // Check fire rate cooldown
     if (weapon && window.__weaponSystem) {
       const fired = window.__weaponSystem.fire();
-      console.log(`[SHOOT] fire() result:`, fired);
       if (!fired) return;
     }
 
     const raycaster = this.el.components.raycaster;
-    console.log(`[SHOOT] raycaster:`, !!raycaster, 'objects:', raycaster?.data?.objects);
     if (!raycaster) return;
 
     raycaster.checkIntersections();
     const intersections = raycaster.intersections;
-    const targets = document.querySelectorAll('.target');
-    console.log(`[SHOOT] intersections: ${intersections.length}, .target elements: ${targets.length}`);
 
     if (weapon && weapon.projectiles > 1 && weapon.spread > 0) {
       this._shotgunHit(raycaster, weapon);
@@ -57,7 +48,6 @@ AFRAME.registerComponent('shoot-controls', {
       if (intersections.length > 0) {
         const hit = intersections[0];
         const targetEl = hit.object.el;
-        console.log(`[SHOOT] hit:`, targetEl?.tagName, 'isTarget:', targetEl?.classList?.contains('target'), 'dist:', hit.distance);
         if (targetEl && targetEl.classList.contains('target')) {
           const damage = weapon?.damage || 1;
           targetEl.dispatchEvent(new CustomEvent('hit', {
@@ -84,15 +74,13 @@ AFRAME.registerComponent('shoot-controls', {
   },
 
   _shotgunHit(raycaster, weapon) {
-    // Get all targets in scene
     const targets = document.querySelectorAll('.target');
     const origin = new THREE.Vector3();
     const direction = new THREE.Vector3();
 
-    // Get controller world position and direction
     this.el.object3D.getWorldPosition(origin);
     this.el.object3D.getWorldDirection(direction);
-    direction.negate(); // A-Frame looks down -Z
+    direction.negate();
 
     targets.forEach(targetEl => {
       const targetPos = new THREE.Vector3();

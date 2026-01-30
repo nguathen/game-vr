@@ -10,49 +10,6 @@
 <body>
   <div id="transition" class="transition"></div>
 
-  <!-- Game Over overlay (hidden until game ends) -->
-  <div id="game-over-overlay" class="hidden">
-    <div class="menu game-over-menu">
-      <h1 class="game-over-title">Game Over</h1>
-      <div id="new-high-badge" class="new-high-badge hidden">NEW HIGH SCORE!</div>
-      <div class="score-section">
-        <p id="final-score" class="final-score">0</p>
-        <p id="final-high-score" class="final-high-score">High Score: 0</p>
-      </div>
-      <div class="stats-section">
-        <div class="stat-box">
-          <span id="stat-targets" class="stat-box-value">0</span>
-          <span class="stat-box-label">Targets</span>
-        </div>
-        <div class="stat-box">
-          <span id="stat-combo" class="stat-box-value">x0</span>
-          <span class="stat-box-label">Best Combo</span>
-        </div>
-        <div class="stat-box">
-          <span id="stat-accuracy" class="stat-box-value">0%</span>
-          <span class="stat-box-label">Accuracy</span>
-        </div>
-      </div>
-      <div class="xp-section">
-        <p id="final-xp" class="xp-display">+0 XP</p>
-        <div class="xp-bar-go"><div id="xp-fill-go" class="xp-fill"></div></div>
-      </div>
-      <div class="buttons">
-        <button id="btn-retry" class="btn btn-primary">Retry</button>
-        <button id="btn-share" class="btn btn-secondary">Share</button>
-        <button id="btn-menu" class="btn btn-secondary">Main Menu</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Quit button (visible during gameplay) -->
-  <button id="btn-quit" class="btn-quit hidden">&#10005; Quit</button>
-
-  <!-- Countdown overlay -->
-  <div id="countdown-overlay" class="hidden">
-    <div class="countdown-text" id="countdown-number">3</div>
-  </div>
-
   <!-- Register A-Frame components before scene -->
   <script src="./js/components/smooth-locomotion.js"></script>
   <script src="./js/components/shoot-controls.js"></script>
@@ -91,6 +48,18 @@
         <!-- 3D Countdown HUD (center, visible during countdown) -->
         <a-text id="hud-countdown" value="" position="0 0.05 -1"
                 scale="0.8 0.8 0.8" color="#00ff88" font="mozillavr" align="center" visible="false"></a-text>
+
+        <!-- 3D Game Over HUD (center, visible after game ends) -->
+        <a-entity id="hud-gameover" visible="false" position="0 0.05 -1">
+          <a-text id="hud-go-title" value="GAME OVER" position="0 0.12 0"
+                  scale="0.6 0.6 0.6" color="#ff4444" font="mozillavr" align="center"></a-text>
+          <a-text id="hud-go-score" value="" position="0 0.04 0"
+                  scale="0.45 0.45 0.45" color="#00ff88" font="mozillavr" align="center"></a-text>
+          <a-text id="hud-go-stats" value="" position="0 -0.02 0"
+                  scale="0.25 0.25 0.25" color="#aaaacc" font="mozillavr" align="center"></a-text>
+          <a-text id="hud-go-info" value="Returning to menu..." position="0 -0.08 0"
+                  scale="0.2 0.2 0.2" color="#888888" font="mozillavr" align="center"></a-text>
+        </a-entity>
 
         <!-- 3D Quit button HUD (top-right, next to timer) -->
         <a-entity id="btn-quit-vr" visible="false" position="0.45 0.38 -1">

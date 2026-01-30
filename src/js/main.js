@@ -146,7 +146,6 @@ function switchToGame() {
       if (hand.components.cursor) {
         hand.removeAttribute('cursor');
       }
-      console.log(`[GAME] ${id} configured: raycaster=.target, shoot-controls=${id === 'left-hand' ? 'left' : 'right'}, components:`, Object.keys(hand.components || {}));
     }
   });
 
@@ -212,11 +211,9 @@ function switchToMenu() {
   }
   refreshRaycasters();
 
-  // Hide game overlays
-  document.getElementById('game-over-overlay')?.classList.add('hidden');
-  document.getElementById('countdown-overlay')?.classList.add('hidden');
-  const btnQuit = document.getElementById('btn-quit');
-  if (btnQuit) btnQuit.classList.add('hidden');
+  // Hide VR game over HUD
+  const hudGameover = document.getElementById('hud-gameover');
+  if (hudGameover) hudGameover.setAttribute('visible', 'false');
 }
 
 // Expose for game-main.js
