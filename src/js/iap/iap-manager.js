@@ -1,4 +1,4 @@
-import gameManager from '../core/game-manager.js';
+import authManager from '../core/auth-manager.js';
 import { products } from './iap-products.js';
 
 const META_BILLING_URL = 'https://store.meta.com/billing';
@@ -62,10 +62,7 @@ class IAPManager {
         if (!product) continue;
 
         if (product.type === 'non_consumable') {
-          gameManager.addPurchase(product.id);
-          if (product.id === 'premium_unlock') {
-            gameManager.setPremium(true);
-          }
+          await this._grantProduct(product);
           console.log(`[IAPManager] Restored entitlement: ${product.id}`);
         }
       }
@@ -103,8 +100,7 @@ class IAPManager {
 
     const { purchaseToken } = response.details;
 
-    // Grant the product
-    this._grantProduct(product);
+    await this._grantProduct(product);
 
     // Consume consumables so they can be purchased again
     if (product.type === 'consumable' && this._service) {
@@ -127,18 +123,23 @@ class IAPManager {
       if (res.ok) await res.json();
     } catch { /* dev server may not be running */ }
 
-    this._grantProduct(product);
+    await this._grantProduct(product);
     return { success: true, product, devMode: true };
   }
 
-  _grantProduct(product) {
+  async _grantProduct(product) {
+    const profile = authManager.profile;
+    if (!profile) return;
+
     if (product.type === 'consumable') {
-      gameManager.addCoins(product.coinAmount);
+      await authManager.saveProfile({ coins: (profile.coins || 0) + (product.coinAmount || 0) });
     } else if (product.type === 'non_consumable') {
-      gameManager.addPurchase(product.id);
-      if (product.id === 'premium_unlock') {
-        gameManager.setPremium(true);
-      }
+      const list = profile.purchasedItems || [];
+      if (list.includes(product.id)) return;
+      const purchased = [...list, product.id];
+      const updates = { purchasedItems: purchased };
+      if (product.id === 'premium_unlock') updates.isPremium = true;
+      await authManager.saveProfile(updates);
     }
   }
 
@@ -148,7 +149,8 @@ class IAPManager {
   }
 
   isOwned(productId) {
-    return gameManager.hasPurchased(productId);
+    const list = authManager.profile?.purchasedItems || [];
+    return list.includes(productId);
   }
 }
 

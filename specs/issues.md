@@ -17,7 +17,44 @@
 
 ## Open Issues
 
-_None_
+### ISSUE-007: [High] Menu buttons not clickable on Quest TWA app
+
+**Severity:** High
+**Status:** Resolved (2026-01-30)
+**Found By:** User (manual testing on Quest 2)
+**Date:** 2026-01-30
+**Assigned:** /dev
+
+### Description
+Welcome screen buttons (Play, mode selection, weapon selection) cannot be clicked when running inside the Quest TWA app. Same buttons work fine on desktop browser.
+
+### Repro Steps
+1. Launch app on Quest 2 via TWA
+2. Auto-enters VR mode
+3. Point controller laser at "PLAY" button
+4. Pull trigger — nothing happens
+5. Same for mode/weapon buttons
+
+### Expected Behavior
+Buttons should respond to VR controller trigger press.
+
+### Actual Behavior
+Buttons are visible but non-interactive in Quest TWA. Work fine on desktop.
+
+### Location
+- **File:** `src/js/main.js`
+- **Functions:** `setupControllerClick()`, `autoEnterVR()`, `buildModeButtons()`, `buildWeaponButtons()`
+- **File:** `src/index.html` (controller raycaster config)
+
+### Root Cause (3 issues)
+1. **Dynamic buttons not captured:** `setupControllerClick()` line 153 queries `.clickable` at setup time, but mode/weapon buttons are created dynamically after. These buttons miss mouseenter/mouseleave handlers.
+2. **Raycaster static selector:** `raycaster="objects: .clickable"` on controllers is evaluated at parse time. Dynamically added `.clickable` elements may not be picked up without forcing a raycaster refresh.
+3. **Race condition:** `autoEnterVR()` fires immediately (line 177), but `initMenu()` waits for `authManager.waitReady()` (line 179). VR session starts before buttons exist → raycaster finds nothing.
+
+### Fix Plan
+1. **Force raycaster refresh** after dynamic buttons are created — call `hand.components.raycaster.refreshObjects()` after `buildModeButtons()` and `buildWeaponButtons()`
+2. **Move autoEnterVR()** inside the `authManager.waitReady().then()` block, after `initMenu()` completes
+3. **Use event delegation** for hover effects instead of static querySelectorAll
 
 ---
 

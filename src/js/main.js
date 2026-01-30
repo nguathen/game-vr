@@ -1,9 +1,19 @@
 import authManager from './core/auth-manager.js';
 import { GAME_MODES } from './game/game-modes.js';
 import { WEAPONS } from './game/weapon-system.js';
+import { startGame as startGameSession } from './game-main.js';
 
 let selectedMode = 'timeAttack';
 let selectedWeapon = 'pistol';
+
+function refreshRaycasters() {
+  ['left-hand', 'right-hand'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el && el.components && el.components.raycaster) {
+      el.components.raycaster.refreshObjects();
+    }
+  });
+}
 
 function createButton(parent, { x, y, width, height, label, value, selected }) {
   const plane = document.createElement('a-plane');
@@ -14,6 +24,13 @@ function createButton(parent, { x, y, width, height, label, value, selected }) {
   plane.setAttribute('color', selected ? '#00d4ff' : '#1a1a4e');
   plane.setAttribute('material', 'shader: flat; opacity: 0.85');
   plane.dataset.value = value;
+
+  plane.addEventListener('mouseenter', () => {
+    plane.setAttribute('material', 'opacity', 1.0);
+  });
+  plane.addEventListener('mouseleave', () => {
+    plane.setAttribute('material', 'opacity', 0.85);
+  });
 
   const text = document.createElement('a-text');
   text.setAttribute('value', label);
@@ -46,6 +63,7 @@ function buildModeButtons(profile) {
       btn.addEventListener('click', () => {
         selectedMode = mode.id;
         buildModeButtons(profile);
+        refreshRaycasters();
       });
     }
   });
@@ -70,10 +88,108 @@ function buildWeaponButtons(profile) {
       btn.addEventListener('click', () => {
         selectedWeapon = weapon.id;
         buildWeaponButtons(profile);
+        refreshRaycasters();
       });
     }
   });
 }
+
+// Switch from menu to game scene (SPA — no page navigation)
+function switchToGame() {
+  // Hide menu, show game
+  const menuContent = document.getElementById('menu-content');
+  const gameContent = document.getElementById('game-content');
+  menuContent.setAttribute('visible', 'false');
+  gameContent.setAttribute('visible', 'true');
+
+  // Show HUD
+  ['crosshair', 'hud-score', 'hud-timer', 'hud-combo', 'hud-lives', 'hud-weapon', 'hud-level', 'game-cursor'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.setAttribute('visible', 'true');
+  });
+
+  // Switch controller raycasters from .clickable to .target
+  ['left-hand', 'right-hand'].forEach(id => {
+    const hand = document.getElementById(id);
+    if (hand) {
+      hand.setAttribute('raycaster', 'objects', '.target');
+      hand.setAttribute('shoot-controls', `hand: ${id === 'left-hand' ? 'left' : 'right'}`);
+      // Remove cursor component (menu mode) - not needed in game
+      if (hand.components.cursor) {
+        hand.removeAttribute('cursor');
+      }
+    }
+  });
+
+  // Enable WASD movement for game
+  const camera = document.getElementById('camera');
+  if (camera) {
+    camera.setAttribute('wasd-controls', 'acceleration: 20');
+  }
+
+  // Enable smooth locomotion on player rig
+  const rig = document.getElementById('player-rig');
+  if (rig) {
+    rig.setAttribute('smooth-locomotion', 'speed: 3; camera: #camera');
+  }
+
+  // Start game logic with selected mode/weapon/theme
+  startGameSession({
+    mode: selectedMode,
+    weapon: selectedWeapon,
+    theme: 'cyber',
+    onReturnToMenu: switchToMenu,
+  });
+}
+
+// Switch from game back to menu
+function switchToMenu() {
+  const menuContent = document.getElementById('menu-content');
+  const gameContent = document.getElementById('game-content');
+  gameContent.setAttribute('visible', 'false');
+  menuContent.setAttribute('visible', 'true');
+
+  // Hide HUD
+  ['crosshair', 'hud-score', 'hud-timer', 'hud-combo', 'hud-lives', 'hud-weapon', 'hud-level', 'game-cursor'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.setAttribute('visible', 'false');
+  });
+
+  // Switch controller raycasters back to .clickable
+  ['left-hand', 'right-hand'].forEach(id => {
+    const hand = document.getElementById(id);
+    if (hand) {
+      hand.setAttribute('raycaster', 'objects', '.clickable');
+      hand.removeAttribute('shoot-controls');
+      hand.setAttribute('cursor', 'fuse: false; rayOrigin: entity');
+    }
+  });
+
+  // Disable WASD
+  const camera = document.getElementById('camera');
+  if (camera) {
+    camera.setAttribute('wasd-controls-enabled', 'false');
+  }
+
+  // Refresh menu buttons
+  const profile = authManager.profile;
+  if (profile) {
+    buildModeButtons(profile);
+    buildWeaponButtons(profile);
+    const info = document.getElementById('player-info');
+    if (info) info.setAttribute('value', `Lv.${profile.level} | ${profile.coins} Coins`);
+  }
+  refreshRaycasters();
+
+  // Hide game overlays
+  document.getElementById('game-over-overlay')?.classList.add('hidden');
+  document.getElementById('countdown-overlay')?.classList.add('hidden');
+  const btnQuit = document.getElementById('btn-quit');
+  if (btnQuit) btnQuit.classList.add('hidden');
+}
+
+// Expose for game-main.js
+window.__switchToMenu = switchToMenu;
 
 function initMenu(profile) {
   selectedWeapon = profile.selectedWeapon || 'pistol';
@@ -83,11 +199,18 @@ function initMenu(profile) {
 
   buildModeButtons(profile);
   buildWeaponButtons(profile);
+  refreshRaycasters();
 
   const playBtn = document.getElementById('btn-play-vr');
   if (playBtn) {
+    playBtn.addEventListener('mouseenter', () => {
+      playBtn.setAttribute('material', 'opacity', 1.0);
+    });
+    playBtn.addEventListener('mouseleave', () => {
+      playBtn.setAttribute('material', 'opacity', 0.9);
+    });
     playBtn.addEventListener('click', () => {
-      window.location.href = `./game.html?mode=${selectedMode}&weapon=${selectedWeapon}&theme=cyber`;
+      switchToGame();
     });
   }
 }
@@ -128,8 +251,7 @@ function setupMouseClick(scene) {
   });
 }
 
-// VR controller click — cursor component on hands handles click emission
-// This is a fallback for additional trigger events
+// VR controller click
 function setupControllerClick(scene) {
   ['left-hand', 'right-hand'].forEach(id => {
     const hand = document.getElementById(id);
@@ -148,33 +270,7 @@ function setupControllerClick(scene) {
     hand.addEventListener('selectstart', doClick);
     hand.addEventListener('gripdown', doClick);
   });
-
-  // Also listen for click on all .clickable elements (cursor component emits these)
-  scene.querySelectorAll('.clickable').forEach(el => {
-    el.addEventListener('mouseenter', () => {
-      el.setAttribute('material', 'opacity', 1.0);
-    });
-    el.addEventListener('mouseleave', () => {
-      el.setAttribute('material', 'opacity', 0.85);
-    });
-  });
 }
-
-// Auto-enter VR
-function autoEnterVR() {
-  const scene = document.getElementById('scene');
-  if (!scene) return;
-  const enter = () => {
-    if (scene.is('vr-mode') || !navigator.xr) return;
-    navigator.xr.isSessionSupported('immersive-vr').then(ok => {
-      if (ok && scene.enterVR) scene.enterVR();
-    }).catch(() => {});
-  };
-  if (scene.hasLoaded) enter();
-  else scene.addEventListener('loaded', enter);
-}
-
-autoEnterVR();
 
 authManager.waitReady().then(() => {
   const profile = authManager.profile;
@@ -184,6 +280,13 @@ authManager.waitReady().then(() => {
     initMenu(profile);
     setupMouseClick(scene);
     setupControllerClick(scene);
+
+    // Auto-enter VR on Quest (required for scene to be visible)
+    if (navigator.xr && scene.enterVR) {
+      navigator.xr.isSessionSupported('immersive-vr').then(ok => {
+        if (ok && !scene.is('vr-mode')) scene.enterVR();
+      }).catch(() => {});
+    }
   };
   if (scene.hasLoaded) init();
   else scene.addEventListener('loaded', init);

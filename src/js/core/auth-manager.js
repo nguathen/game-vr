@@ -51,18 +51,44 @@ class AuthManager {
       return;
     }
 
+    const TIMEOUT_MS = 5000;
+
     return new Promise((resolve) => {
-      onAuthStateChanged(auth, async (user) => {
-        if (user) {
-          this._user = user;
-          await this._loadProfile();
-        } else {
-          await signInAnonymously(auth);
-          return; // onAuthStateChanged will fire again
-        }
+      let resolved = false;
+      const done = () => {
+        if (resolved) return;
+        resolved = true;
         this._ready = true;
         this._notify();
         resolve();
+      };
+
+      // Timeout fallback — if Firebase doesn't respond, use localStorage
+      const timer = setTimeout(() => {
+        if (!resolved) {
+          console.warn('[AuthManager] Firebase timeout, falling back to localStorage');
+          this._profile = this._loadLocal();
+          done();
+        }
+      }, TIMEOUT_MS);
+
+      onAuthStateChanged(auth, async (user) => {
+        try {
+          if (user) {
+            this._user = user;
+            await this._loadProfile();
+          } else {
+            await signInAnonymously(auth);
+            return; // onAuthStateChanged will fire again
+          }
+          clearTimeout(timer);
+          done();
+        } catch (e) {
+          console.warn('[AuthManager] Firebase error, falling back to localStorage', e);
+          this._profile = this._loadLocal();
+          clearTimeout(timer);
+          done();
+        }
       });
     });
   }

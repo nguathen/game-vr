@@ -1,6 +1,6 @@
 # Task Management
 
-> Last Updated: 2026-01-29
+> Last Updated: 2026-01-30
 > Purpose: Active work queue. Keep this file short.
 > [View Completed Tasks Archive](./tasks-archive.md)
 
@@ -11,7 +11,7 @@
 | Status | Count |
 |--------|-------|
 | In Progress | 0 |
-| Pending | 0 |
+| Pending | 2 |
 | Completed | 28 |
 
 > Note: V1 tasks (TASK-010~020) completed. V2 Phase 1 (TASK-101~105) completed + all 6 issues resolved.
@@ -232,6 +232,81 @@ Polish the overall UI with smooth transitions, micro-animations, and visual cons
 - [ ] Loading state indicator for async operations
 - [ ] Smooth page transitions
 - [ ] No animation when `reducedMotion` setting is true
+
+---
+
+### TASK-121: Fix VR Menu Buttons Not Clickable on Quest TWA
+**Priority:** High
+**Status:** Completed ✅ (2026-01-30)
+**Assigned:** /dev
+**Dependencies:** None
+**Related:** ISSUE-007
+
+#### Description
+Menu buttons (Play, mode, weapon selection) are not clickable when running on Quest 2 via TWA app. Works fine on desktop browser. Root cause: raycaster doesn't detect dynamically created buttons + race condition with autoEnterVR.
+
+#### Implementation
+Fix 3 issues in `src/js/main.js`:
+
+1. **Force raycaster refresh after dynamic button creation:**
+   - After `buildModeButtons()` and `buildWeaponButtons()`, call `refreshRaycasters()` to force A-Frame raycaster to re-query `.clickable` elements
+   - Add helper: `function refreshRaycasters() { ['left-hand', 'right-hand'].forEach(id => { const el = document.getElementById(id); if (el?.components?.raycaster) el.components.raycaster.refreshObjects(); }); }`
+
+2. **Move `autoEnterVR()` after menu init:**
+   - Move `autoEnterVR()` call inside `authManager.waitReady().then()`, AFTER `initMenu()` and `setupControllerClick()` complete
+   - This ensures buttons exist before VR session starts
+
+3. **Use event delegation for hover effects:**
+   - Replace static `querySelectorAll('.clickable')` with scene-level event delegation
+   - Listen for `mouseenter`/`mouseleave` on the scene and check if target has `.clickable` class
+   - OR: attach hover listeners inside `createButton()` so every dynamic button gets them
+
+#### Acceptance Criteria
+- [ ] Play button clickable on Quest 2 TWA
+- [ ] Mode/weapon buttons clickable on Quest 2 TWA
+- [ ] Hover effects work on dynamically created buttons
+- [ ] Desktop mouse click still works
+- [ ] No race condition between VR entry and menu creation
+
+---
+
+### TASK-122: Clean debug/temp and redundant files
+**Priority:** Medium
+**Status:** Pending
+**Assigned:** /dev
+**Dependencies:** None
+
+#### Description
+Remove debug artifacts, tunnel logs, one-off test scripts, and duplicate component so the repo is clean and build is unambiguous.
+
+#### Implementation
+- Delete from repo root: `iap-test.mjs`, `iap-test2.mjs`, `tunnel.log`, `tunnel2.log`, `quest-screenshot-debug.png`, `quest-screenshot-debug2.png`, `QUEST_TEST_CHECKLIST.md`
+- Delete duplicate: `public/js/components/menu-button.js` (HTML loads from `src/`; Vite root is src, so only `src/js/components/menu-button.js` is used)
+- Add to `.gitignore`: `tunnel*.log`, `*-debug.png`, `iap-test*.mjs` so future debug artifacts stay local
+
+#### Acceptance Criteria
+- [ ] No iap-test*.mjs, tunnel*.log, *-debug.png, QUEST_TEST_CHECKLIST.md in repo
+- [ ] Only one menu-button.js (under src)
+- [ ] .gitignore updated for above patterns
+
+---
+
+### TASK-123: Production logging cleanup
+**Priority:** Low
+**Status:** Pending
+**Assigned:** /dev
+**Dependencies:** None
+
+#### Description
+Reduce console noise in production. Keep only actionable warnings; remove verbose info logs from IAP and auth.
+
+#### Implementation
+- In `src/js/iap/iap-manager.js`: remove `console.log` for "Digital Goods API connected", "Prices fetched from Meta", "Restored entitlement", "Dev purchase". Keep `console.warn` for fallbacks and failures.
+- In `src/js/core/auth-manager.js`: keep `console.warn` for Firebase timeout/error fallback (useful for support). No change if no other logs.
+
+#### Acceptance Criteria
+- [ ] No console.log in iap-manager.js for normal flow
+- [ ] console.warn retained for errors/fallbacks in iap-manager and auth-manager
 
 ---
 

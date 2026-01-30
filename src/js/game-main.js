@@ -15,18 +15,25 @@ import musicManager from './core/music-manager.js';
 import { buildSummary, formatShareText, copyToClipboard } from './game/game-summary.js';
 import { showToast } from './ui/toast.js';
 import { countUp } from './ui/animations.js';
-import { tryEnterVR } from './core/vr-util.js';
 
 const COUNTDOWN_FROM = 3;
 
 let targetSystem;
 let timerInterval;
 let timeLeft;
+let _onReturnToMenu;
 
 // Expose weapon system to A-Frame components (non-module)
 window.__weaponSystem = weaponSystem;
 
-function init() {
+export function startGame({ mode, weapon, theme, onReturnToMenu }) {
+  if (mode) gameModeManager.select(mode);
+  if (weapon) weaponSystem.select(weapon);
+  _onReturnToMenu = onReturnToMenu;
+  init(theme);
+}
+
+function init(themeParam) {
   const container = document.getElementById('target-container');
   const mode = gameModeManager.current;
 
@@ -50,20 +57,10 @@ function init() {
   // Load audio settings
   audioManager.loadSettings();
 
-  // Read selected mode & weapon from URL params
-  const params = new URLSearchParams(window.location.search);
-  const modeParam = params.get('mode');
-  const weaponParam = params.get('weapon');
-  const themeParam = params.get('theme');
-  if (modeParam) gameModeManager.select(modeParam);
-  if (weaponParam) weaponSystem.select(weaponParam);
-
   // Apply theme (TASK-112)
-  const scene = document.getElementById('game-scene');
+  const scene = document.getElementById('scene');
   const selectedTheme = themeParam || authManager.profile?.selectedTheme || 'cyber';
   applyTheme(scene, selectedTheme);
-
-  tryEnterVR(scene);
 
   // Spawn ambient particles (TASK-111)
   spawnAmbientParticles(scene);
@@ -147,7 +144,7 @@ function init() {
   });
 
   document.getElementById('btn-menu').addEventListener('click', () => {
-    window.location.href = './index.html';
+    if (_onReturnToMenu) _onReturnToMenu();
   });
 
   function updateLivesDisplay() {
@@ -233,7 +230,7 @@ function init() {
         clearInterval(countInterval);
         setTimeout(() => {
           countdownOverlay.classList.add('hidden');
-          startGame();
+          startRound();
         }, 500);
       }
     }, 1000);
@@ -251,7 +248,7 @@ function init() {
     }
   });
 
-  function startGame() {
+  function startRound() {
     scoreManager.reset();
     const currentMode = gameModeManager.current;
     timeLeft = currentMode.duration;
@@ -435,10 +432,4 @@ function init() {
   }
 }
 
-// Wait for auth before init
-let initialized = false;
-authManager.waitReady().then(() => {
-  const safeInit = () => { if (!initialized) { initialized = true; init(); } };
-  document.addEventListener('DOMContentLoaded', safeInit);
-  if (document.readyState !== 'loading') safeInit();
-});
+// SPA: game is started via startGame() exported above, called from main.js

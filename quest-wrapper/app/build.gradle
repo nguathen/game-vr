@@ -6,7 +6,7 @@ plugins {
 
 def twaManifest = [
     applicationId: 'com.nvr.iaptest',
-    hostName: 'appliances-investigate-spending-regardless.trycloudflare.com',
+    hostName: 'affecting-stanford-mom-rainbow.trycloudflare.com',
     launchUrl: '/',
     name: 'NVR IAP Test',
     launcherName: 'NVR IAP',
@@ -33,7 +33,7 @@ android {
         applicationId 'com.nvr.iaptest'
         minSdkVersion 29
         targetSdkVersion 32
-        versionCode 3
+        versionCode 5
         versionName '1.0.0'
 
         resValue "string", "appName", twaManifest.name
@@ -42,7 +42,7 @@ android {
         resValue "string", "launchUrl", launchUrl
         resValue "string", "hostName", twaManifest.hostName
         resValue "string", "horizonOSAppMode", "immersive"
-        resValue "string", "fullScopeUrl", "https://vr.proxyit.online/"
+        resValue "string", "fullScopeUrl", "https://affecting-stanford-mom-rainbow.trycloudflare.com/"
 
         resValue "color", "colorPrimary", twaManifest.themeColor
         resValue "color", "colorPrimaryDark", twaManifest.themeColorDark
