@@ -12,14 +12,20 @@ param(
 $ErrorActionPreference = "Stop"
 $ProjectRoot = $PSScriptRoot
 $QuestWrapper = Join-Path $ProjectRoot "quest-wrapper"
-$ADB = "C:\Users\zohof\AppData\Local\Android\Sdk\platform-tools\adb.exe"
-$GradleBat = "C:\Users\zohof\.gradle\wrapper\dists\gradle-8.13-bin\5xuhj0ry160q40clulazy9h7d\gradle-8.13\bin\gradle.bat"
 $AppPackage = "com.nvr.iaptest"
 $BrowserPackage = "com.oculus.browser"
 $Hostname = "vr.proxyit.online"
 
-$env:JAVA_HOME = "C:\Program Files\Android\Android Studio\jbr"
-$env:ANDROID_HOME = "C:\Users\zohof\AppData\Local\Android\Sdk"
+# Portable paths: use env or defaults (no hardcoded user)
+$defaultJbr = "C:\Program Files\Android\Android Studio\jbr"
+if (-not $env:JAVA_HOME -or -not (Test-Path "$env:JAVA_HOME\bin\java.exe")) {
+    if (Test-Path "$defaultJbr\bin\java.exe") { $env:JAVA_HOME = $defaultJbr }
+}
+if (-not $env:ANDROID_HOME) { $env:ANDROID_HOME = "$env:LOCALAPPDATA\Android\Sdk" }
+$ADB = Join-Path $env:ANDROID_HOME "platform-tools\adb.exe"
+$GradleBat = Join-Path $QuestWrapper "gradlew.bat"
+if (-not (Test-Path $ADB)) { Write-Host "ADB not found at $ADB. Set ANDROID_HOME." -ForegroundColor Red; exit 1 }
+if (-not (Test-Path $GradleBat)) { Write-Host "gradlew.bat not found at $GradleBat." -ForegroundColor Red; exit 1 }
 
 function Write-Step($num, $total, $msg) {
     Write-Host "`n[$num/$total] $msg" -ForegroundColor Yellow
@@ -107,10 +113,12 @@ if (-not $SkipApk) {
     }
     Set-Content $buildGradle $content
 
-    # Clean & build
+    # Clean & build (gradlew is inside quest-wrapper)
     $appBuild = Join-Path $QuestWrapper "app\build"
     if (Test-Path $appBuild) { Remove-Item -Recurse -Force $appBuild }
-    & $GradleBat --no-daemon -p $QuestWrapper assembleRelease 2>&1 | Out-Null
+    $prevDir = Get-Location; Set-Location $QuestWrapper
+    & $GradleBat --no-daemon assembleRelease 2>&1 | Out-Null
+    Set-Location $prevDir
     if ($LASTEXITCODE -ne 0) {
         Write-Err "Gradle build failed!"
         exit 1
