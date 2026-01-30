@@ -57,7 +57,9 @@ AFRAME.registerComponent('target-hit', {
     // Explosion effect
     this.el.removeAttribute('animation__float');
     this.el.removeAttribute('animation__move');
-    this.el.setAttribute('material', 'color: #ffffff; shader: flat');
+    this.el.setAttribute('material', 'color', '#ffffff');
+    this.el.setAttribute('material', 'emissive', '#ffffff');
+    this.el.setAttribute('material', 'emissiveIntensity', '1.0');
     this.el.setAttribute('animation__explode', {
       property: 'scale',
       to: '1.5 1.5 1.5',

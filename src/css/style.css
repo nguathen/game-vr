@@ -347,24 +347,95 @@ body {
 .btn-buy:disabled { background: #444; color: #888; cursor: not-allowed; }
 
 /* Game Over */
-.game-over-menu { max-width: 420px; }
+.game-over-menu { max-width: 440px; }
 
-#final-score {
-  font-size: 2rem;
+.game-over-title {
+  font-size: 1.8rem;
+  background: linear-gradient(135deg, #ff4466, #ff8800);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  margin-bottom: 8px;
+}
+
+.new-high-badge {
+  display: inline-block;
+  background: linear-gradient(135deg, #ffd700, #ff8c00);
+  color: #000;
+  font-size: 0.7rem;
+  font-weight: 800;
+  padding: 4px 16px;
+  border-radius: 20px;
+  letter-spacing: 2px;
+  margin-bottom: 12px;
+  animation: badge-glow 1.5s ease-in-out infinite alternate;
+}
+@keyframes badge-glow {
+  from { box-shadow: 0 0 8px rgba(255, 215, 0, 0.3); }
+  to { box-shadow: 0 0 20px rgba(255, 215, 0, 0.6); }
+}
+
+.score-section { margin-bottom: 12px; }
+
+.final-score {
+  font-size: 3rem;
+  font-weight: 800;
   color: #00ff88;
-  margin: 16px 0 4px;
+  margin: 8px 0 4px;
 }
 
-#final-high-score {
+.final-high-score {
   color: #888;
-  margin-bottom: 4px;
+  font-size: 0.85rem;
+  margin-bottom: 0;
 }
+
+.stats-section {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.stat-box {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  padding: 10px 14px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 75px;
+}
+
+.stat-box-value {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: #00d4ff;
+}
+
+.stat-box-label {
+  font-size: 0.55rem;
+  color: #666;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-top: 4px;
+}
+
+.xp-section { margin-bottom: 16px; }
 
 .xp-display {
   font-size: 1.1rem;
   color: #00d4ff;
   font-weight: 700;
   margin-bottom: 4px;
+}
+
+.xp-bar-go {
+  height: 6px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+  overflow: hidden;
+  margin-top: 6px;
 }
 
 .stats-line {

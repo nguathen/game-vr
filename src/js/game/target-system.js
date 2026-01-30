@@ -7,6 +7,14 @@ const BASE_POINTS = 10;
 const ARENA = { x: 12, yMin: 1, yMax: 4, zMin: -14, zMax: -3 };
 const COLORS = ['#e94560', '#ff6b6b', '#ffa502', '#2ed573', '#1e90ff', '#a855f7', '#ff69b4'];
 
+const TARGET_MATERIALS = {
+  standard: { metalness: 0.6, roughness: 0.3, emissive: '#222222', emissiveIntensity: 0.4 },
+  speed:    { metalness: 0.8, roughness: 0.2, emissive: '#ffdd00', emissiveIntensity: 0.6 },
+  heavy:    { metalness: 0.9, roughness: 0.1, emissive: '#ff1111', emissiveIntensity: 0.5 },
+  bonus:    { metalness: 0.7, roughness: 0.2, emissive: '#ffd700', emissiveIntensity: 0.8 },
+  decoy:    { metalness: 0.5, roughness: 0.5, emissive: '#440000', emissiveIntensity: 0.3 },
+};
+
 const TARGET_TYPES = {
   standard:  { weight: 50, points: 10, radius: 0.3,  geometry: 'a-sphere', color: null, hp: 1, speed: 0, lifetime: null, coins: 0 },
   speed:     { weight: 20, points: 25, radius: 0.22, geometry: 'a-sphere', color: '#ffdd00', hp: 1, speed: 2.5, lifetime: null, coins: 0 },
@@ -103,12 +111,21 @@ class TargetSystem {
       el.setAttribute('width', String(s));
       el.setAttribute('height', String(s));
       el.setAttribute('depth', String(s));
+      // Slow rotation to show 3D depth on flat surfaces
+      el.setAttribute('animation__rotate', {
+        property: 'rotation',
+        to: '360 360 0',
+        dur: 4000 + Math.random() * 2000,
+        easing: 'linear', loop: true,
+      });
     } else {
       el.setAttribute('radius', String(type.radius));
     }
 
     const color = type.color || this._randomColor();
-    el.setAttribute('material', `shader: flat; color: ${color}`);
+    // 3D materials: metallic + emissive for sci-fi look
+    const matProps = TARGET_MATERIALS[typeId] || TARGET_MATERIALS.standard;
+    el.setAttribute('material', `color: ${color}; metalness: ${matProps.metalness}; roughness: ${matProps.roughness}; emissive: ${matProps.emissive}; emissiveIntensity: ${matProps.emissiveIntensity}`);
 
     const hp = this._bossMode ? type.hp + Math.floor(this._wave / 3) : type.hp;
     el.setAttribute('target-hit', `hp: ${hp}; targetType: ${typeId}`);

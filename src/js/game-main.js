@@ -129,18 +129,33 @@ function _initRound(themeParam) {
 
   scoreManager.onChange(score => {
     _hudScore.setAttribute('value', `Score: ${score}`);
+    // Score pop animation
+    _hudScore.setAttribute('animation__pop', {
+      property: 'scale', from: '0.42 0.42 0.42', to: '0.35 0.35 0.35',
+      dur: 150, easing: 'easeOutQuad',
+    });
   });
 
   targetSystem.onComboChange = (combo) => {
     if (combo >= 2) {
       _hudCombo.setAttribute('value', `x${combo} COMBO!`);
+      // Color escalation
+      let color = '#ff44aa';
+      if (combo >= 10) color = '#ffd700';
+      else if (combo >= 5) color = '#ff8800';
+      _hudCombo.setAttribute('color', color);
       _hudCombo.setAttribute('animation__pop', {
         property: 'scale',
-        from: '0.4 0.4 0.4',
-        to: '0.3 0.3 0.3',
-        dur: 200,
-        easing: 'easeOutElastic',
+        from: '0.5 0.5 0.5', to: '0.4 0.4 0.4',
+        dur: 200, easing: 'easeOutElastic',
       });
+      // Shake at x10+
+      if (combo >= 10) {
+        _hudCombo.setAttribute('animation__shake', {
+          property: 'position', from: '-0.01 0.2 -1', to: '0.01 0.2 -1',
+          dur: 80, loop: 3, dir: 'alternate', easing: 'linear',
+        });
+      }
     } else {
       _hudCombo.setAttribute('value', '');
     }
@@ -152,6 +167,17 @@ function _initRound(themeParam) {
       const dead = gameModeManager.loseLife();
       audioManager.playLifeLost();
       _updateLivesDisplay();
+      // Shake lives display
+      if (_hudLives) {
+        _hudLives.setAttribute('animation__shake', {
+          property: 'position', from: '-0.47 0.22 -1', to: '-0.43 0.22 -1',
+          dur: 80, loop: 3, dir: 'alternate', easing: 'linear',
+        });
+        setTimeout(() => {
+          _hudLives.setAttribute('position', '-0.45 0.22 -1');
+          _hudLives.removeAttribute('animation__shake');
+        }, 500);
+      }
       if (dead) endGame();
     }
   };
@@ -263,6 +289,9 @@ function startRound() {
   _hudScore.setAttribute('value', 'Score: 0');
   _hudCombo.setAttribute('value', '');
 
+  // Reset timer state
+  _hudTimer.removeAttribute('animation__pulse');
+  _hudTimer.setAttribute('scale', '0.35 0.35 0.35');
   if (timeLeft === Infinity) {
     _hudTimer.setAttribute('value', '∞');
     _hudTimer.setAttribute('color', '#44ff44');
@@ -279,10 +308,22 @@ function startRound() {
       timeLeft--;
       _hudTimer.setAttribute('value', String(timeLeft));
 
-      if (timeLeft <= 10) {
+      if (timeLeft <= 5) {
+        _hudTimer.setAttribute('color', '#ff0000');
+        _hudTimer.setAttribute('animation__pulse', {
+          property: 'scale', from: '0.35 0.35 0.35', to: '0.45 0.45 0.45',
+          dur: 400, loop: true, dir: 'alternate', easing: 'easeInOutSine',
+        });
+      } else if (timeLeft <= 10) {
         _hudTimer.setAttribute('color', '#ff4444');
+        _hudTimer.setAttribute('animation__pulse', {
+          property: 'scale', from: '0.35 0.35 0.35', to: '0.42 0.42 0.42',
+          dur: 500, loop: true, dir: 'alternate', easing: 'easeInOutSine',
+        });
       } else {
         _hudTimer.setAttribute('color', '#ffaa00');
+        _hudTimer.removeAttribute('animation__pulse');
+        _hudTimer.setAttribute('scale', '0.35 0.35 0.35');
       }
 
       if (timeLeft <= 0) {
@@ -339,31 +380,38 @@ async function endGame() {
 
   const newAchievements = await checkAchievements();
 
+  // Score display with count-up
   const scoreEl = document.getElementById('final-score');
-  scoreEl.textContent = 'Score: 0';
+  scoreEl.textContent = '0';
   countUp(scoreEl, 0, result.score, 800);
-  const scoreObserver = new MutationObserver(() => {
-    if (!scoreEl.textContent.startsWith('Score:')) {
-      scoreEl.textContent = `Score: ${scoreEl.textContent}`;
-    }
-  });
-  scoreObserver.observe(scoreEl, { childList: true, characterData: true, subtree: true });
   setTimeout(() => {
-    scoreObserver.disconnect();
-    scoreEl.textContent = `Score: ${result.score.toLocaleString()}`;
+    scoreEl.textContent = result.score.toLocaleString();
   }, 900);
 
+  // High score badge
+  const highBadge = document.getElementById('new-high-badge');
   const highScoreEl = document.getElementById('final-high-score');
   if (isNewHigh) {
-    highScoreEl.textContent = 'New High Score!';
+    if (highBadge) highBadge.classList.remove('hidden');
+    highScoreEl.textContent = '';
     highScoreEl.style.color = '#ffd700';
   } else {
+    if (highBadge) highBadge.classList.add('hidden');
     const hs = authManager.profile?.highScores?.[currentMode.id] || 0;
     const diff = result.score - hs;
     highScoreEl.textContent = diff >= 0 ? `High Score: ${hs}` : `High Score: ${hs} (${diff})`;
     highScoreEl.style.color = '#888';
   }
 
+  // Stat boxes
+  const statTargets = document.getElementById('stat-targets');
+  const statCombo = document.getElementById('stat-combo');
+  const statAccuracy = document.getElementById('stat-accuracy');
+  if (statTargets) statTargets.textContent = targetSystem.targetsHit;
+  if (statCombo) statCombo.textContent = `x${targetSystem.bestCombo}`;
+  if (statAccuracy) statAccuracy.textContent = `${summary.accuracy}%`;
+
+  // XP display + bar
   const xpEl = document.getElementById('final-xp');
   if (xpEl) {
     xpEl.textContent = `+${xpEarned} XP`;
@@ -375,10 +423,14 @@ async function endGame() {
       xpEl.style.color = '#00d4ff';
     }
   }
-
-  const statsEl = document.getElementById('final-stats');
-  if (statsEl) {
-    statsEl.textContent = `Targets: ${targetSystem.targetsHit} | Combo: x${targetSystem.bestCombo} | Accuracy: ${summary.accuracy}%`;
+  const xpFill = document.getElementById('xp-fill-go');
+  if (xpFill) {
+    const profile2 = authManager.profile;
+    const xpForLevel = (profile2.level || 1) * 100;
+    const currentXp = (profile2.xp || 0) % xpForLevel;
+    const pct = Math.min(100, (currentXp / xpForLevel) * 100);
+    xpFill.style.width = '0%';
+    setTimeout(() => { xpFill.style.width = pct + '%'; }, 100);
   }
 
   if (challengeResult.justCompleted) {
@@ -393,16 +445,8 @@ async function endGame() {
     showToast(`Level Up! You are now Lv.${levelResult.newLevel}`, 'achievement');
   }
 
-  let shareBtn = document.getElementById('btn-share');
-  if (!shareBtn) {
-    shareBtn = document.createElement('button');
-    shareBtn.id = 'btn-share';
-    shareBtn.className = 'btn btn-secondary';
-    shareBtn.textContent = 'Share';
-    const btnRow = _gameOverOverlay.querySelector('.buttons');
-    if (btnRow) btnRow.appendChild(shareBtn);
-  }
-  shareBtn.onclick = async () => {
+  const shareBtn = document.getElementById('btn-share');
+  if (shareBtn) shareBtn.onclick = async () => {
     summary.isNewHigh = isNewHigh;
     const text = formatShareText(summary);
     const ok = await copyToClipboard(text);

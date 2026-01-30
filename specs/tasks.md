@@ -11,7 +11,7 @@
 | Status | Count |
 |--------|-------|
 | In Progress | 0 |
-| Pending | 2 |
+| Pending | 7 |
 | Completed | 28 |
 
 > Note: V1 tasks (TASK-010~020) completed. V2 Phase 1 (TASK-101~105) completed + all 6 issues resolved.
@@ -28,6 +28,453 @@ _None_
 ---
 
 ## Pending
+
+### TASK-125: VR Menu UI Upgrade — Visual Polish & Layout
+**Priority:** High
+**Status:** Pending
+**Assigned:** /dev
+**Dependencies:** None
+
+#### Description
+Redesign the VR main menu for better visuals and Quest UX. Current menu is flat text on a dark panel — lacks depth, hierarchy, and polish.
+
+#### Current State
+- Panel: `a-plane` at `(0, 1.4, -3.5)` size `4×3.6`, flat dark blue `#0a0a2a`
+- Title: plain `a-text` "VR QUEST V2" in `#00d4ff`
+- Buttons: flat `a-plane` with text, all at same z-depth `-3.4`
+- Mode/weapon buttons: dynamically created via `createButton()` in `main.js`
+- Decorative: 5 floating spheres + 1 rotating torus in background
+
+#### Changes Required
+
+**A. Panel Background — Add depth & glow**
+File: `src/index.html` → `#menu-content`
+1. Replace single flat panel with layered panels for depth:
+   - Back panel: `position="0 1.4 -3.6"` width `4.2` height `3.8`, color `#050520`, opacity `0.95` (shadow layer)
+   - Main panel: keep at `-3.5`, add `border` effect using a slightly larger wireframe plane behind it
+   - Add a thin glowing border: `a-plane` width `4.05` height `3.65` at `z=-3.52`, color `#00d4ff`, opacity `0.08`
+2. Add subtle animated accent line at top of panel:
+   - `a-plane` at `(0, 3.15, -3.45)`, width `3`, height `0.005`, color `#00d4ff`
+   - Animation: opacity oscillate `0.3` to `0.8` over `2s`
+
+**B. Title — Add glow effect**
+File: `src/index.html`
+1. Keep "VR QUEST V2" but increase width to `7` for bigger text
+2. Add a duplicate behind as glow: same text at `z=-3.42`, color `#00d4ff`, opacity `0.3`, scale `1.05`
+3. Change subtitle "Target Shooter" to `#8888aa` for better contrast
+
+**C. Player Info Bar — Visual upgrade**
+File: `src/index.html`
+1. Add a small background bar behind player info:
+   - `a-plane` at `(0, 2.2, -3.45)`, width `2.5`, height `0.2`, color `#1a1a3a`, opacity `0.7`
+2. Keep `#player-info` text at `z=-3.4` (in front of bar)
+
+**D. Section Labels — Style upgrade**
+File: `src/index.html`
+1. Add small decorative lines beside "GAME MODE" and "WEAPON" labels:
+   - Left line: `a-plane` width `0.4`, height `0.002`, color `#00d4ff`, opacity `0.3`
+   - Right line: same, mirrored
+   - Position: same Y as label, offset X ±1.0
+
+**E. PLAY Button — Make it stand out**
+File: `src/index.html`
+1. Add a glow plane behind PLAY button:
+   - `a-plane` at `(0, 0.35, -3.35)`, width `1.6`, height `0.55`, color `#00ff88`, opacity `0.06`
+2. Add pulsing animation to PLAY button:
+   - `animation="property: material.opacity; from: 0.85; to: 1.0; dur: 1200; loop: true; dir: alternate; easing: easeInOutSine"`
+
+**F. Mode/Weapon Buttons — Visual upgrade**
+File: `src/js/main.js` → `createButton()`
+1. Selected button: add subtle glow — create a child `a-plane` behind (z=-0.01), same size +0.05, color `#00d4ff`, opacity `0.15`
+2. Add hover animation: scale `1.05` on mouseenter, `1.0` on mouseleave (use `setAttribute('animation__hover', ...)`)
+3. Locked buttons: add `🔒` icon prefix, color `#333355`
+
+**G. Floor — Enhanced grid**
+File: `src/index.html` → `#menu-content`
+1. Add a radial gradient effect: second floor plane at `y=0.02`, circular (use `a-circle`), radius `8`, color `#0044aa`, opacity `0.05`
+2. Keep wireframe grid but increase opacity to `0.3`
+
+#### VR UX Rules (MUST follow)
+- All clickable buttons: min `0.3` unit gap between edges (see ISSUE-008)
+- All clickable: z-offset `≥ 0.05` in front of non-clickable panels
+- Test: `createButton()` must call `refreshRaycasters()` after adding
+- No overlapping hitboxes
+
+#### Acceptance Criteria
+- [ ] Panel has depth layers (shadow + glow border)
+- [ ] Title has glow duplicate
+- [ ] Player info has background bar
+- [ ] Section labels have decorative lines
+- [ ] PLAY button has glow + pulse animation
+- [ ] Mode/weapon buttons have hover animation + selected glow
+- [ ] Floor has enhanced grid/glow
+- [ ] All changes work on Quest 2 (test after build)
+
+---
+
+### TASK-126: VR HUD Upgrade — In-Game Display
+**Priority:** High
+**Status:** Pending
+**Assigned:** /dev
+**Dependencies:** None
+
+#### Description
+Upgrade the in-game HUD for better readability and visual feedback on Quest. Current HUD is plain `a-text` elements attached to camera.
+
+#### Current State (all in `src/index.html` inside `<a-camera>`)
+- `#hud-score`: `position="-0.45 0.3 -1"`, scale `0.35`, color `#00ff88`
+- `#hud-timer`: `position="0.45 0.3 -1"`, scale `0.35`, color `#ffaa00`
+- `#hud-combo`: `position="0 0.2 -1"`, scale `0.3`, color `#ff44aa`
+- `#hud-lives`: `position="-0.45 0.22 -1"`, scale `0.25`, color `#ff4444`
+- `#hud-weapon`: `position="0.45 0.22 -1"`, scale `0.2`, color `#aaaaff`
+- `#hud-level`: `position="-0.45 0.35 -1"`, scale `0.2`, color `#ffd700`
+- `#crosshair`: `a-ring` at `0 0 -1`
+
+#### Changes Required
+
+**A. HUD Background Panels**
+File: `src/index.html` → inside `<a-camera>`
+1. Add semi-transparent background panels behind HUD groups for readability:
+   - Top-left group (score + level + lives): `a-plane` at `(-0.45, 0.3, -1.01)`, width `0.35`, height `0.18`, color `#000000`, opacity `0.3`, `shader: flat`
+   - Top-right group (timer + weapon): `a-plane` at `(0.45, 0.3, -1.01)`, width `0.3`, height `0.18`, color `#000000`, opacity `0.3`
+2. These panels sit behind text (z=-1.01 vs text at z=-1)
+
+**B. Crosshair Enhancement**
+File: `src/index.html`
+1. Add a dot center to crosshair: `a-circle` radius `0.003`, color `#00ff88`, position `0 0 -0.999`
+2. Add outer ring: `a-ring` radius-inner `0.025` radius-outer `0.027`, color `#00ff88`, opacity `0.3`
+3. Hit feedback: In `game-main.js`, on target hit, briefly flash crosshair to white then back
+
+**C. Combo Display — More impact**
+File: `src/index.html` + `src/js/game-main.js`
+1. Increase combo text scale to `0.4` for bigger impact
+2. In `game-main.js` `onComboChange`: add color escalation:
+   - x2-x4: `#ff44aa` (current)
+   - x5-x9: `#ff8800` (orange)
+   - x10+: `#ffd700` (gold) + add shake animation
+
+**D. Timer — Low time warning**
+File: `src/js/game-main.js`
+1. When `timeLeft <= 10`: add pulsing animation to timer text
+   ```js
+   _hudTimer.setAttribute('animation__pulse', {
+     property: 'scale', from: '0.35 0.35 0.35', to: '0.42 0.42 0.42',
+     dur: 500, loop: true, dir: 'alternate', easing: 'easeInOutSine'
+   });
+   ```
+2. When `timeLeft <= 5`: change color to `#ff0000` (brighter red)
+3. When timer ends or goes back to normal: remove animation
+
+**E. Lives Display — Heart icons with animation**
+File: `src/js/game-main.js` → `_updateLivesDisplay()`
+1. On life lost: add brief shake animation to `_hudLives`:
+   ```js
+   _hudLives.setAttribute('animation__shake', {
+     property: 'position', from: '-0.47 0.22 -1', to: '-0.43 0.22 -1',
+     dur: 100, loop: 2, dir: 'alternate', easing: 'linear'
+   });
+   ```
+2. Reset position after animation completes
+
+**F. Score — Pop on change**
+File: `src/js/game-main.js` → `scoreManager.onChange`
+1. On score change, briefly scale up the score text:
+   ```js
+   _hudScore.setAttribute('animation__pop', {
+     property: 'scale', from: '0.4 0.4 0.4', to: '0.35 0.35 0.35',
+     dur: 150, easing: 'easeOutQuad'
+   });
+   ```
+
+#### Acceptance Criteria
+- [ ] HUD has background panels for readability
+- [ ] Crosshair has center dot + outer ring
+- [ ] Combo text color escalates with combo count
+- [ ] Timer pulses when ≤10s, brighter red at ≤5s
+- [ ] Lives shake on hit
+- [ ] Score pops on change
+- [ ] All animations work in VR on Quest 2
+
+---
+
+### TASK-127: Game Over Screen Upgrade
+**Priority:** Medium
+**Status:** Pending
+**Assigned:** /dev
+**Dependencies:** None
+
+#### Description
+Upgrade the Game Over overlay for better visual presentation. Currently uses HTML overlay with basic text.
+
+#### Current State
+File: `src/index.html` (HTML overlay, not VR)
+- `#game-over-overlay`: hidden div, shows on game end
+- Contains: h1 "Game Over", score, high score, XP, stats line, Retry/Menu buttons
+- Score uses `countUp` animation already
+File: `src/css/style.css` → `.game-over-menu`, `#final-score`, etc.
+File: `src/js/game-main.js` → `endGame()` populates all fields
+
+#### Changes Required
+
+**A. Layout Restructure**
+File: `src/index.html` → `#game-over-overlay`
+1. Replace current flat layout with structured card:
+```html
+<div id="game-over-overlay" class="hidden">
+  <div class="menu game-over-menu">
+    <h1 class="game-over-title">Game Over</h1>
+    <div id="new-high-badge" class="new-high-badge hidden">NEW HIGH SCORE!</div>
+    <div class="score-section">
+      <p id="final-score" class="final-score">0</p>
+      <p id="final-high-score" class="final-high-score">High Score: 0</p>
+    </div>
+    <div class="stats-section">
+      <div class="stat-box">
+        <span id="stat-targets" class="stat-box-value">0</span>
+        <span class="stat-box-label">Targets</span>
+      </div>
+      <div class="stat-box">
+        <span id="stat-combo" class="stat-box-value">x0</span>
+        <span class="stat-box-label">Best Combo</span>
+      </div>
+      <div class="stat-box">
+        <span id="stat-accuracy" class="stat-box-value">0%</span>
+        <span class="stat-box-label">Accuracy</span>
+      </div>
+    </div>
+    <div class="xp-section">
+      <p id="final-xp" class="xp-display">+0 XP</p>
+      <div class="xp-bar-go"><div id="xp-fill-go" class="xp-fill"></div></div>
+    </div>
+    <div class="buttons">
+      <button id="btn-retry" class="btn btn-primary">Retry</button>
+      <button id="btn-share" class="btn btn-secondary">Share</button>
+      <button id="btn-menu" class="btn btn-secondary">Main Menu</button>
+    </div>
+  </div>
+</div>
+```
+
+**B. CSS Styles**
+File: `src/css/style.css`
+```css
+.game-over-title {
+  font-size: 1.8rem;
+  background: linear-gradient(135deg, #ff4466, #ff8800);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  margin-bottom: 8px;
+}
+.new-high-badge {
+  background: linear-gradient(135deg, #ffd700, #ff8c00);
+  color: #000;
+  font-size: 0.7rem;
+  font-weight: 800;
+  padding: 4px 16px;
+  border-radius: 20px;
+  letter-spacing: 2px;
+  margin-bottom: 12px;
+  animation: badge-glow 1.5s ease-in-out infinite alternate;
+}
+@keyframes badge-glow {
+  from { box-shadow: 0 0 8px rgba(255, 215, 0, 0.3); }
+  to { box-shadow: 0 0 20px rgba(255, 215, 0, 0.6); }
+}
+.final-score {
+  font-size: 3rem;
+  font-weight: 800;
+  color: #00ff88;
+  margin: 8px 0 4px;
+}
+.final-high-score {
+  color: #888;
+  font-size: 0.85rem;
+  margin-bottom: 16px;
+}
+.stats-section {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+.stat-box {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  padding: 12px 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 80px;
+}
+.stat-box-value {
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: #00d4ff;
+}
+.stat-box-label {
+  font-size: 0.6rem;
+  color: #666;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-top: 4px;
+}
+.xp-section { margin-bottom: 16px; }
+.xp-bar-go {
+  height: 6px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+  overflow: hidden;
+  margin-top: 8px;
+}
+```
+
+**C. JS Updates**
+File: `src/js/game-main.js` → `endGame()`
+1. Update to populate new stat boxes individually:
+   ```js
+   document.getElementById('stat-targets').textContent = targetSystem.targetsHit;
+   document.getElementById('stat-combo').textContent = `x${targetSystem.bestCombo}`;
+   document.getElementById('stat-accuracy').textContent = `${summary.accuracy}%`;
+   ```
+2. Show/hide `#new-high-badge` based on `isNewHigh`
+3. Add XP bar fill animation:
+   ```js
+   const xpFill = document.getElementById('xp-fill-go');
+   if (xpFill) {
+     const pct = ((profile.xp % xpForNextLevel) / xpForNextLevel) * 100;
+     xpFill.style.width = '0%';
+     setTimeout(() => xpFill.style.width = pct + '%', 100);
+   }
+   ```
+4. Remove old `#final-stats` single line, remove `btn-share` dynamic creation (now in HTML)
+5. Move share button to static HTML (already in new layout)
+
+#### Acceptance Criteria
+- [ ] Game Over has structured card layout
+- [ ] Stats shown in individual boxes (targets, combo, accuracy)
+- [ ] "NEW HIGH SCORE!" badge with glow animation
+- [ ] XP bar fills with animation
+- [ ] Score count-up animation preserved
+- [ ] Share button is static (not dynamically created)
+- [ ] Retry/Menu buttons work as before
+
+---
+
+### TASK-128: VR Shop UI Upgrade
+**Priority:** Medium
+**Status:** Pending
+**Assigned:** /dev
+**Dependencies:** TASK-125
+
+#### Description
+Polish the VR Shop UI to match the upgraded menu style. Apply same visual language (glow borders, depth panels, hover effects).
+
+#### Current State
+File: `src/index.html` → `#shop-content`
+- Background panel: flat `a-plane` at `-3.5`
+- Title: "SHOP" text
+- Product cards: dynamically built in `main.js` → `buildShopCards()`
+- Back button: flat `a-plane`
+
+#### Changes Required
+
+**A. Shop Panel — Match menu style**
+File: `src/index.html` → `#shop-content`
+1. Add same layered panel as menu (shadow + glow border):
+   - Shadow: `a-plane` at `z=-3.6`, slightly larger, dark
+   - Glow border: `a-plane` at `z=-3.52`, `#ffd700`, opacity `0.08` (gold accent for shop)
+2. Add accent line at top: `a-plane` gold colored, animated opacity
+
+**B. Product Cards — Better design**
+File: `src/js/main.js` → `buildShopCards()`
+1. Add card border glow on hover:
+   ```js
+   btn.addEventListener('mouseenter', () => {
+     card.setAttribute('material', 'opacity', 1.0);
+     card.setAttribute('color', owned ? '#1a3a1a' : '#1a1a4e'); // lighter on hover
+   });
+   ```
+2. Increase card size to `1.0 × 1.3` for better readability
+3. Add separator line between product info and price
+4. "OWNED" button: add checkmark `✓` prefix
+
+**C. Balance Display — Prominent**
+File: `src/js/main.js` → `buildShopCards()`
+1. Add background bar behind balance text (same as player info in menu)
+2. Add coin icon prefix: "🪙 500 Coins"
+
+**D. Back Button — Match style**
+File: `src/index.html`
+1. Add hover glow effect (same as PLAY button treatment)
+2. Add arrow prefix: "← BACK"
+
+#### Acceptance Criteria
+- [ ] Shop panel has depth layers matching menu
+- [ ] Product cards have hover effects
+- [ ] Balance display has background bar
+- [ ] Back button has arrow + hover glow
+- [ ] All clicks work on Quest 2
+
+---
+
+### TASK-129: Game Arena Visual Upgrade
+**Priority:** Medium
+**Status:** Pending
+**Assigned:** /dev
+**Dependencies:** None
+
+#### Description
+Upgrade the in-game arena environment for a more immersive feel. Current arena is a basic flat floor with faint walls and grid.
+
+#### Current State
+File: `src/index.html` → `#game-content`
+- Floor: plain `a-plane` 100×100, color `#111133`
+- Grid: wireframe `a-plane` 30×30, opacity `0.3`
+- Walls: 4 `a-box` transparent blue
+- Pillars: 4 `a-cylinder` at corners
+- Lights: 4 point lights (blue, red, green, pink)
+- Ambient particles: 25 tiny white spheres (spawned in JS)
+
+#### Changes Required
+
+**A. Floor — Add glow ring**
+File: `src/index.html` → `#game-content`
+1. Add a glowing ring on the floor at arena center:
+   - `a-torus` position `0 0.02 0` rotation `-90 0 0`, radius `8`, radius-tubular `0.02`, color `#00d4ff`, opacity `0.15`
+   - Animation: slow rotation `0 0 360` over 20s, loop
+2. Add a second inner ring: radius `4`, color `#ff44aa`, opacity `0.1`
+
+**B. Walls — Add edge glow lines**
+File: `src/index.html`
+1. Add thin glowing lines at the base of each wall:
+   - Front wall base: `a-plane` at `(0, 0.05, -15)`, width `30`, height `0.03`, color `#0088ff`, opacity `0.4`
+   - Same for other 3 walls
+2. Add vertical glow lines at wall corners (where walls meet):
+   - `a-cylinder` radius `0.02`, height `5`, color `#0088ff`, opacity `0.3` at `(±15, 2.5, ±15)`
+
+**C. Pillars — Enhanced**
+File: `src/index.html`
+1. Add glowing ring around each pillar base:
+   - `a-torus` at pillar position (y=0.1), rotation `-90 0 0`, radius `0.5`, radius-tubular `0.01`, color `#00d4ff`, opacity `0.2`
+2. Add light orb on top of each pillar:
+   - `a-sphere` at pillar position (y=4.2), radius `0.15`, color matching nearby light, shader flat
+
+**D. Sky — Dynamic**
+File: `src/index.html`
+1. Add very faint star field: 15 tiny `a-sphere` at random positions (y=8-15, spread x/z ±20), radius `0.03`, white, opacity `0.2-0.4`
+   - Animation: twinkle (opacity oscillate) at random durations
+
+#### Acceptance Criteria
+- [ ] Floor has 2 glowing rings (rotating)
+- [ ] Walls have base glow lines
+- [ ] Wall corners have vertical glow lines
+- [ ] Pillars have base ring + top light orb
+- [ ] Faint star field in sky
+- [ ] Performance: < 50 new entities total (Quest 2 limit)
+- [ ] All decorative elements use `shader: flat` (no lighting calculation)
+
+---
 
 ### TASK-124: In-Game VR Shop UI
 **Priority:** High
