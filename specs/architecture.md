@@ -29,7 +29,7 @@
 | Database | JSON file (purchases.json) |
 | Payment | Meta Digital Goods API (Quest) / Stripe (dev fallback) |
 | Dev Server | Vite |
-| Deploy | TWA APK via Meta Quest Store (ALPHA channel); `.\quest-deploy.ps1` = build + adb install |
+| Deploy | TWA APK via Meta Quest Store (ALPHA channel); `.\quest-deploy.ps1` = build + adb install (see **Build & Run on Quest 2** below) |
 | Hosting | Nginx reverse proxy: `vr.proxyit.online` → `localhost:3001` |
 | Monorepo | `client/` (Vite frontend) + `server/` (Express backend) |
 
@@ -236,6 +236,25 @@ Score + Retry         Item → Save
 | STRIPE_SECRET_KEY | .env | Stripe API key |
 | STRIPE_WEBHOOK_SECRET | .env | Webhook verification |
 | PORT | .env | Server port (default 3000) |
+
+---
+
+## 10. Build & Run on Quest 2
+
+**Prerequisites**
+- Node.js, npm (client + server deps: `npm run install:all`)
+- Android SDK: `ANDROID_HOME` (default `%LOCALAPPDATA%\Android\Sdk`) with platform-tools (adb)
+- Java: `JAVA_HOME` (e.g. Android Studio JBR: `C:\Program Files\Android\Android Studio\jbr`)
+- Quest 2: USB connected, Developer Mode on, ADB authorized
+- Backend reachable at `https://vr.proxyit.online` (nginx proxy → localhost:3001)
+
+**Steps**
+1. Start server locally: `npm run server` (or ensure proxy forwards to your machine).
+2. From repo root: `.\quest-deploy.ps1` — syncs components, Vite build, starts server if needed, builds APK (Gradle), installs on Quest, launches app.
+3. Optional: `.\quest-deploy.ps1 -SkipApk` — code-only deploy (build + sync + restart app, no APK rebuild).
+4. Optional: `.\quest-deploy.ps1 -RestartServer` — kill existing server process and start fresh.
+
+**Script** `quest-deploy.ps1` uses `ANDROID_HOME` for adb, `JAVA_HOME` for Gradle, and `quest-wrapper\gradlew.bat` for APK build (portable, no hardcoded user paths).
 
 ---
 

@@ -267,7 +267,12 @@ function initMenu(profile) {
     });
     exitBtn.addEventListener('click', () => {
       console.log('[Menu] Exit clicked!');
-      window.history.back();
+      const scene = document.getElementById('scene');
+      if (scene && scene.is('vr-mode')) {
+        scene.exitVR();
+      }
+      try { window.close(); } catch(e) {}
+      setTimeout(() => { window.history.back(); }, 300);
     });
     refreshRaycasters();
   }

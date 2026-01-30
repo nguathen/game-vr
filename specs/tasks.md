@@ -29,6 +29,23 @@ _None_
 
 ## Pending
 
+### TASK-132: Quest 2 build & run — portable deploy script
+**Priority:** High
+**Status:** Completed
+**Assigned:** /dev
+**Dependencies:** None
+
+#### Description
+Make `quest-deploy.ps1` work on any dev machine (no hardcoded user paths). Use ANDROID_HOME (default %LOCALAPPDATA%\Android\Sdk) for adb, JAVA_HOME (default Android Studio jbr) for Gradle, and quest-wrapper\gradlew.bat for APK build.
+
+#### Acceptance Criteria
+- [x] ADB path from ANDROID_HOME\platform-tools\adb.exe
+- [x] Gradle via quest-wrapper\gradlew.bat (assembleRelease)
+- [x] JAVA_HOME/ANDROID_HOME fallbacks documented in architecture
+- [x] specs/architecture.md section "Build & Run on Quest 2" with prerequisites and steps
+
+---
+
 ### TASK-131: Remove Cloudflare Tunnel — Use Nginx Proxy (vr.proxyit.online)
 **Priority:** High
 **Status:** Completed ✅ (2026-01-30)
@@ -928,5 +945,6 @@ Reduce console noise in production. Keep only actionable warnings; remove verbos
 | TASK-119 | Game Replay Summary & Share | 2026-01-29 |
 | TASK-120 | UI Polish & Animations | 2026-01-29 |
 | TASK-130 | Quest build + deploy script | 2026-01-30 |
+| TASK-132 | Quest 2 build & run — portable deploy script | 2026-01-30 |
 
 [View all completed tasks ->](./tasks-archive.md)

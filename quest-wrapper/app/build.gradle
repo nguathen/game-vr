@@ -33,7 +33,7 @@ android {
         applicationId 'com.nvr.vrquest'
         minSdkVersion 29
         targetSdkVersion 32
-        versionCode 7
+        versionCode 13
         versionName '1.0.0'
 
         resValue "string", "appName", twaManifest.name
@@ -133,5 +133,11 @@ dependencies {
     implementation 'com.meta.androidbrowserhelper:horizonpermissions:1.0.0'
     implementation 'com.meta.androidbrowserhelper:horizonbilling:1.0.0-alpha11'
 }
+
+
+
+
+
+
 
 
