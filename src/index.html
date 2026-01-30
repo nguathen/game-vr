@@ -116,7 +116,7 @@
               color="#aaaacc" width="2.5"></a-text>
       <a-entity id="weapon-buttons" position="0 0.9 -3.4"></a-entity>
 
-      <!-- PLAY Button -->
+      <!-- PLAY Button (centered) -->
       <a-plane id="btn-play-vr" class="clickable" position="0 0.35 -3.3"
                width="1.4" height="0.45" color="#006644"
                material="shader: flat; opacity: 0.9"
@@ -124,15 +124,11 @@
         <a-text value="PLAY" align="center" color="#00ff88" width="6"
                 position="0 0 0.01"></a-text>
       </a-plane>
-
-      <!-- SHOP Icon (bottom-right corner of panel) -->
-      <a-plane id="btn-shop-vr" class="clickable" position="1.55 -0.1 -3.3"
-               width="0.5" height="0.5" color="#4a3800"
+      <!-- SHOP (text only, right corner) -->
+      <a-plane id="btn-shop-vr" class="clickable" position="1.25 0.35 -3.3"
+               width="0.5" height="0.38" color="#4a3800"
                material="shader: flat; opacity: 0.9; side: double">
-        <a-text value="&#128722;" align="center" width="4"
-                position="0 0.05 0.01"></a-text>
-        <a-text value="SHOP" align="center" color="#ffd700" width="2.5"
-                position="0 -0.15 0.01" scale="0.8 0.8 0.8"></a-text>
+        <a-text value="Shop" align="center" color="#ffd700" width="2.5" position="0 0 0.01"></a-text>
       </a-plane>
 
       <!-- Decorative floating targets -->
@@ -178,9 +174,9 @@
 
       <!-- Back button -->
       <a-plane id="btn-shop-back" class="clickable" position="0 0.25 -3.4"
-               width="1.2" height="0.35" color="#333355"
+               width="1.65" height="0.35" color="#333355"
                material="shader: flat; opacity: 0.9">
-        <a-text value="BACK TO MENU" align="center" color="#aaaacc" width="4"
+        <a-text value="BACK TO MENU" align="center" color="#aaaacc" width="1.5"
                 position="0 0 0.01"></a-text>
       </a-plane>
     </a-entity>

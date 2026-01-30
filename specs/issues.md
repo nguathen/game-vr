@@ -11,7 +11,7 @@
 |--------|-------|
 | Open | 0 |
 | In Progress | 0 |
-| Resolved | 6 |
+| Resolved | 8 |
 
 ---
 
@@ -89,6 +89,35 @@ _None_
 ### ISSUE-006: [Low] Unused variable `key` in `updateHighScore`
 **Status:** Resolved (2026-01-29)
 **Fix:** Removed unused `const key = 'highScores'` from `auth-manager.js`.
+
+### ISSUE-008: [High] Shop UI click-through bugs on Quest VR
+**Status:** Resolved (2026-01-30)
+**Found By:** User (manual testing on Quest 2)
+**Date:** 2026-01-30
+
+**Root Causes & Fixes (5 bugs):**
+
+1. **Shop UI visible during gameplay** — `switchToGame()` didn't hide `shop-content`. Fix: add `shopContent.setAttribute('visible', 'false')` in both `switchToGame()` and `switchToMenu()`.
+
+2. **Hidden shop buttons still purchasable** — Click events on hidden A-Frame entities still fire because Three.js meshes remain in scene graph. Fix: add `shopVisible` boolean guard in `handlePurchase()`.
+
+3. **Duplicate event listeners stacking** — `init()` in `game-main.js` called every PLAY press, stacking listeners on btn-retry etc. Random clicks triggered `startCountdown()` multiple times. Fix: split into `_initOnce()` + `_initRound()` with `_initialized` guard.
+
+4. **Desktop raycaster hitting hidden elements** — `setupMouseClick()` Three.js raycaster picked up meshes from hidden entities. First fix used `getAttribute('visible') === 'false'` which DOES NOT WORK — A-Frame returns boolean, not string. Fix: check `!el.object3D.visible` directly. Also filter by hidden parent containers.
+
+5. **SHOP button overlapping PLAY on Quest** — VR controller raycaster is imprecise. Buttons at same z-depth with small vertical gap caused accidental clicks. Fix: move SHOP to a small icon in bottom-right corner, well separated from PLAY.
+
+### Lessons Learned (AVOID IN FUTURE)
+
+| # | Pitfall | Rule |
+|---|---------|------|
+| 1 | A-Frame `getAttribute('visible')` returns boolean, NOT string `"false"` | Always use `el.object3D.visible` for visibility checks |
+| 2 | A-Frame `visible="false"` hides visually but raycaster still intersects meshes | Guard click handlers with state flags; filter hidden containers in custom raycasters |
+| 3 | Calling `init()` on every game start stacks event listeners | Use `_initialized` guard; split one-time setup from per-round setup |
+| 4 | VR controller raycaster is imprecise (~0.1-0.2 unit tolerance) | Keep clickable buttons well separated (>0.3 units); don't stack buttons vertically at same z-depth |
+| 5 | Large centered buttons overlap with nearby elements | Use small, corner-positioned buttons for secondary actions (Shop, Settings) |
+| 6 | SPA scene switching must hide ALL other containers | Every `switchTo*()` function must explicitly hide all sibling containers |
+| 7 | Cloudflare quick tunnel URL changes on restart | After tunnel restart: update `build.gradle`, `strings.xml`, rebuild APK, reinstall |
 
 ---
 
