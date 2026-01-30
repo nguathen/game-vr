@@ -22,7 +22,7 @@ app.get('/api/health', (_req, res) => {
 });
 
 // Serve static files from dist/ in production
-const distPath = join(__dirname, '..', 'dist');
+const distPath = join(__dirname, '..', 'client', 'dist');
 app.use(express.static(distPath));
 app.get('*', (_req, res) => {
   res.sendFile(join(distPath, 'index.html'));

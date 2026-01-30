@@ -1,7 +1,7 @@
 # Architecture
 
 > Status: Active
-> Last Updated: 2026-01-29
+> Last Updated: 2026-01-30
 
 ---
 
@@ -26,11 +26,12 @@
 | Physics | aframe-physics-system (cannon.js) |
 | UI | A-Frame HTML UI / custom VR panels |
 | IAP Backend | Node.js + Express (REST API) |
-| Database | SQLite (via better-sqlite3) |
+| Database | JSON file (purchases.json) |
 | Payment | Meta Digital Goods API (Quest) / Stripe (dev fallback) |
 | Dev Server | Vite |
-| Deploy | TWA APK via Meta Quest Store (ALPHA channel); `npm run quest` = build + adb install |
+| Deploy | TWA APK via Meta Quest Store (ALPHA channel); `.\quest-deploy.ps1` = build + adb install |
 | Tunnel | Cloudflare Tunnel (dev) → production hosting TBD |
+| Monorepo | `client/` (Vite frontend) + `server/` (Express backend) |
 
 ---
 
@@ -38,46 +39,89 @@
 
 ```
 vr/
-├── .claude/                    # Claude Code configuration
-├── specs/                      # Specifications and tracking
-├── src/
-│   ├── index.html              # Entry point - Main Menu
-│   ├── game.html               # Game scene
-│   ├── shop.html               # IAP Shop
-│   ├── css/
-│   │   └── style.css           # UI styling
-│   ├── js/
-│   │   ├── core/
-│   │   │   ├── game-manager.js     # Game state machine
-│   │   │   ├── scene-manager.js    # Scene transitions
-│   │   │   └── audio-manager.js    # Sound effects
-│   │   ├── player/
-│   │   │   └── vr-controls.js      # VR controller input
-│   │   ├── game/
-│   │   │   ├── target-system.js    # Target spawning & hit detection
-│   │   │   └── score-manager.js    # Score tracking (localStorage)
-│   │   ├── iap/
-│   │   │   ├── iap-manager.js      # Purchase flow (client)
-│   │   │   └── iap-products.js     # Product definitions
-│   │   └── components/
-│   │       ├── grabbable.js        # A-Frame grab component
-│   │       ├── target.js           # A-Frame target component
-│   │       └── vr-ui-button.js     # VR interactive button
-│   └── assets/
-│       ├── models/                 # 3D models (.glb)
-│       ├── sounds/                 # Audio files
-│       └── textures/               # Images/textures
-├── server/
-│   ├── index.js                # Express server
+├── client/                        # Frontend (Vite + A-Frame)
+│   ├── src/
+│   │   ├── index.html             # Entry point - Main Menu + Game (SPA)
+│   │   ├── game.html              # Game scene (alternate entry)
+│   │   ├── shop.html              # IAP Shop page
+│   │   ├── settings.html          # Settings page
+│   │   ├── stats.html             # Stats dashboard
+│   │   ├── tutorial.html          # Interactive tutorial
+│   │   ├── friends.html           # Friends list
+│   │   ├── privacy.html           # Privacy policy
+│   │   ├── manifest.json          # PWA manifest
+│   │   ├── css/
+│   │   │   └── style.css          # UI styling
+│   │   ├── js/
+│   │   │   ├── main.js            # SPA entry point, menu, navigation
+│   │   │   ├── game-main.js       # Game loop, HUD, countdown, game over
+│   │   │   ├── core/
+│   │   │   │   ├── game-manager.js    # Game state machine
+│   │   │   │   ├── audio-manager.js   # Procedural SFX (Web Audio)
+│   │   │   │   ├── music-manager.js   # Procedural BGM per theme
+│   │   │   │   ├── auth-manager.js    # Firebase auth + profile
+│   │   │   │   ├── firebase-config.js # Firebase config
+│   │   │   │   ├── friend-manager.js  # Friend codes + social
+│   │   │   │   ├── leaderboard-manager.js # Global leaderboard
+│   │   │   │   └── vr-util.js         # VR utility helpers
+│   │   │   ├── game/
+│   │   │   │   ├── target-system.js   # Target spawning + hit detection
+│   │   │   │   ├── score-manager.js   # Score + accuracy tracking
+│   │   │   │   ├── game-modes.js      # Mode definitions + lives
+│   │   │   │   ├── weapon-system.js   # Weapon stats + selection
+│   │   │   │   ├── weapon-skins.js    # Cosmetic skin overrides
+│   │   │   │   ├── achievements.js    # Achievement checks
+│   │   │   │   ├── daily-challenge.js # Daily challenge progress
+│   │   │   │   ├── environment-themes.js # Theme visuals
+│   │   │   │   ├── game-summary.js    # End-game stats builder
+│   │   │   │   └── settings-util.js   # Settings read helper
+│   │   │   ├── iap/
+│   │   │   │   ├── iap-manager.js     # Purchase flow (Meta DG / dev)
+│   │   │   │   └── iap-products.js    # Product definitions
+│   │   │   ├── components/            # A-Frame components (non-module)
+│   │   │   │   ├── shoot-controls.js  # VR trigger → raycaster shoot
+│   │   │   │   ├── target-hit.js      # Target hit reaction + particles
+│   │   │   │   ├── particle-burst.js  # Particle burst effect
+│   │   │   │   ├── damage-number.js   # Floating damage numbers
+│   │   │   │   ├── smooth-locomotion.js # Thumbstick movement
+│   │   │   │   └── menu-button.js     # VR menu button component
+│   │   │   └── ui/
+│   │   │       ├── animations.js      # staggerIn, countUp, pulse
+│   │   │       └── toast.js           # Toast notifications
+│   │   └── assets/
+│   │       ├── models/
+│   │       ├── sounds/
+│   │       └── textures/
+│   ├── public/                    # Static assets (copied to dist/)
+│   │   ├── .well-known/
+│   │   │   └── assetlinks.json    # Android app links verification
+│   │   └── js/components/         # A-Frame components (mirror of src)
+│   ├── dist/                      # Build output (gitignored)
+│   ├── vite.config.js             # Vite build config
+│   └── package.json               # Client deps (firebase, vite)
+│
+├── server/                        # Backend (Express.js)
+│   ├── index.js                   # Express server, serves client/dist/
 │   ├── routes/
-│   │   └── iap.js              # IAP endpoints
+│   │   └── iap.js                 # IAP endpoints (Stripe + dev mode)
 │   ├── db/
-│   │   └── database.js         # SQLite setup
-│   └── middleware/
-│       └── auth.js             # Simple auth
-├── package.json
-├── vite.config.js
-└── SETUP.md
+│   │   └── database.js            # JSON file DB (purchases.json)
+│   ├── .env.example               # Environment variables template
+│   └── package.json               # Server deps (express, cors, dotenv)
+│
+├── quest-wrapper/                 # Android TWA wrapper (Gradle)
+│   ├── app/
+│   │   ├── build.gradle           # TWA config (hostname, versionCode)
+│   │   └── src/
+│   ├── settings.gradle
+│   └── release.keystore           # APK signing key (gitignored)
+│
+├── .claude/                       # Claude Code configuration
+├── specs/                         # Specifications and tracking
+├── package.json                   # Root orchestrator (npm scripts)
+├── quest-deploy.ps1               # Build + deploy to Quest via ADB
+├── purchases.json                 # Purchase records (gitignored)
+└── .gitignore
 ```
 
 ---
@@ -130,16 +174,20 @@ vr/
 }
 ```
 
-### Purchase Record (SQLite)
-```sql
-CREATE TABLE purchases (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  session_id TEXT NOT NULL,
-  product_id TEXT NOT NULL,
-  stripe_session TEXT,
-  status TEXT DEFAULT 'pending',  -- pending, completed, failed
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-);
+### Purchase Record (purchases.json)
+```json
+{
+  "purchases": [
+    {
+      "id": 1,
+      "session_id": "uuid",
+      "product_id": "coin_pack_100",
+      "stripe_session": "cs_xxx",
+      "status": "completed",
+      "created_at": "2026-01-30T12:00:00.000Z"
+    }
+  ]
+}
 ```
 
 ---
@@ -274,6 +322,21 @@ Score + Retry         Item → Save
 - Positive: Already established pattern in existing audio-manager.js
 - Negative: Limited to synthetic sounds (no realistic instruments)
 - Mitigation: Game aesthetic is sci-fi/neon, synthetic sounds fit perfectly
+
+### ADR-007: Client/Server Monorepo Split
+**Status:** Accepted
+**Date:** 2026-01-30
+
+**Context:** All source code was mixed at root level — `src/` (frontend), `server/` (backend), `vite.config.js`, and a shared `package.json`. This made it unclear which code was client vs server and complicated independent dependency management.
+
+**Decision:** Split into `client/` and `server/` directories, each with its own `package.json`. Root `package.json` acts as orchestrator with convenience scripts. Deploy script (`quest-deploy.ps1`) updated to use new paths.
+
+**Consequences:**
+- Positive: Clear separation — `client/` = Vite + A-Frame, `server/` = Express API
+- Positive: Independent dependency management (no canvas/express bloat in client)
+- Positive: Each folder can be deployed independently in production
+- Negative: Need to run `npm install` in both directories (mitigated by `npm run install:all`)
+- Note: A-Frame components in `client/src/js/components/` must be synced to `client/public/js/components/` before build (handled by `quest-deploy.ps1`)
 
 ### ADR Template
 

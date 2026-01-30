@@ -3,7 +3,7 @@ import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const DB_PATH = join(__dirname, '../../purchases.json');
+const DB_PATH = join(__dirname, '..', '..', 'purchases.json');
 
 function load() {
   if (!existsSync(DB_PATH)) return { purchases: [] };

@@ -51,8 +51,8 @@ $step = 0
 # --- Step: Sync A-Frame components to public/ ---
 $step++
 Write-Step $step $totalSteps "Syncing A-Frame components to public/"
-$srcComponents = Join-Path $ProjectRoot "src\js\components"
-$pubComponents = Join-Path $ProjectRoot "public\js\components"
+$srcComponents = Join-Path $ProjectRoot "client\src\js\components"
+$pubComponents = Join-Path $ProjectRoot "client\public\js\components"
 if (!(Test-Path $pubComponents)) { New-Item -ItemType Directory -Path $pubComponents -Force | Out-Null }
 Copy-Item "$srcComponents\*" $pubComponents -Force
 Write-OK "Components synced"
@@ -60,7 +60,8 @@ Write-OK "Components synced"
 # --- Step: Vite build ---
 $step++
 Write-Step $step $totalSteps "Building frontend (Vite)"
-Set-Location $ProjectRoot
+$clientDir = Join-Path $ProjectRoot "client"
+Set-Location $clientDir
 $buildResult = node -e "const {build} = require('vite'); build().then(() => { console.log('BUILD_OK'); process.exit(0); }).catch(e => { console.error(e.message); process.exit(1); })" 2>&1
 if ($LASTEXITCODE -ne 0) {
     Write-Err "Vite build failed!"
@@ -155,7 +156,7 @@ if (-not $Quick) {
         Set-Content $stringsXml $strContent
 
         # Update manifest.json
-        $manifest = Join-Path $ProjectRoot "src\manifest.json"
+        $manifest = Join-Path $ProjectRoot "client\src\manifest.json"
         if (Test-Path $manifest) {
             $mContent = Get-Content $manifest -Raw
             $mContent = $mContent -replace 'https://[^"]*trycloudflare\.com[^"]*', "https://$hostname/"
