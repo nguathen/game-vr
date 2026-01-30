@@ -254,6 +254,22 @@ function initMenu(profile) {
     shopBtn.addEventListener('click', () => switchToShop());
   }
 
+  // Exit button — clear history then go back to close TWA
+  const exitBtn = document.getElementById('btn-exit-vr');
+  if (exitBtn) {
+    exitBtn.addEventListener('mouseenter', () => {
+      exitBtn.setAttribute('material', 'opacity', 1.0);
+    });
+    exitBtn.addEventListener('mouseleave', () => {
+      exitBtn.setAttribute('material', 'opacity', 0.9);
+    });
+    exitBtn.addEventListener('click', () => {
+      // Replace current entry so there's no forward history, then go back
+      // This causes TWA to finish since there's nothing to go back to
+      window.location.replace('about:blank');
+    });
+  }
+
   // Shop back button
   const shopBackBtn = document.getElementById('btn-shop-back');
   if (shopBackBtn) {
