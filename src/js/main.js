@@ -146,6 +146,7 @@ function switchToGame() {
       if (hand.components.cursor) {
         hand.removeAttribute('cursor');
       }
+      console.log(`[GAME] ${id} configured: raycaster=.target, shoot-controls=${id === 'left-hand' ? 'left' : 'right'}, components:`, Object.keys(hand.components || {}));
     }
   });
 
