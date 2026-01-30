@@ -6,8 +6,9 @@
             \"relation\": [\"delegate_permission/common.handle_all_urls\"],
             \"target\": {
                 \"namespace\": \"web\",
-                \"site\": \"https://fifteen-papers-fcc-lonely.trycloudflare.com\"
+                \"site\": \"https://spider-webmasters-themselves-logs.trycloudflare.com\"
             }
         }]
     </string>
 </resources>
+

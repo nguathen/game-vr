@@ -41,7 +41,7 @@ export function startGame({ mode, weapon, theme, onReturnToMenu }) {
 
 // DOM refs (set once)
 let _hudScore, _hudTimer, _hudCombo, _hudLives, _hudWeapon, _hudLevel;
-let _gameOverOverlay, _countdownOverlay, _countdownNumber, _scene, _btnQuit;
+let _gameOverOverlay, _countdownOverlay, _countdownNumber, _scene, _btnQuit, _btnQuitVr;
 
 function _initOnce() {
   _hudScore = document.getElementById('hud-score');
@@ -55,10 +55,31 @@ function _initOnce() {
   _countdownNumber = document.getElementById('countdown-number');
   _scene = document.getElementById('scene');
   _btnQuit = document.getElementById('btn-quit');
+  _btnQuitVr = document.getElementById('btn-quit-vr');
 
   // One-time event listeners
   if (_btnQuit) {
     _btnQuit.addEventListener('click', () => endGame());
+  }
+  if (_btnQuitVr) {
+    const vrPlane = _btnQuitVr.querySelector('a-plane');
+    if (vrPlane) {
+      const handleQuit = () => {
+        endGame();
+        // In VR, game-over overlay is 2D (invisible), so return to menu directly
+        setTimeout(() => { if (_onReturnToMenu) _onReturnToMenu(); }, 300);
+      };
+      vrPlane.addEventListener('click', handleQuit);
+      vrPlane.addEventListener('hit', handleQuit);
+      vrPlane.addEventListener('mouseenter', () => {
+        vrPlane.setAttribute('material', 'opacity', 1.0);
+        vrPlane.setAttribute('color', '#882222');
+      });
+      vrPlane.addEventListener('mouseleave', () => {
+        vrPlane.setAttribute('material', 'opacity', 0.9);
+        vrPlane.setAttribute('color', '#661a1a');
+      });
+    }
   }
 
   document.getElementById('btn-retry').addEventListener('click', () => {
@@ -281,6 +302,7 @@ function startRound() {
   gameModeManager.startRound();
   gameManager.changeState(GameState.PLAYING);
   if (_btnQuit) _btnQuit.classList.remove('hidden');
+  if (_btnQuitVr) _btnQuitVr.setAttribute('visible', 'true');
   targetSystem.start();
 
   musicManager.loadSettings();
@@ -336,6 +358,7 @@ function startRound() {
 async function endGame() {
   if (timerInterval) clearInterval(timerInterval);
   if (_btnQuit) _btnQuit.classList.add('hidden');
+  if (_btnQuitVr) _btnQuitVr.setAttribute('visible', 'false');
   gameManager.changeState(GameState.GAME_OVER);
   targetSystem.stop();
   musicManager.stopMusic();

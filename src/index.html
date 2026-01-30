@@ -87,6 +87,20 @@
         <a-text id="hud-level" value="" position="-0.45 0.35 -1"
                 scale="0.2 0.2 0.2" color="#ffd700" font="mozillavr" align="left" visible="false"></a-text>
         <a-cursor id="game-cursor" color="#00ff88" fuse="false" raycaster="objects: .target; far: 100" visible="false"></a-cursor>
+
+        <!-- 3D Countdown HUD (center, visible during countdown) -->
+        <a-text id="hud-countdown" value="" position="0 0.05 -1"
+                scale="0.8 0.8 0.8" color="#00ff88" font="mozillavr" align="center" visible="false"></a-text>
+
+        <!-- 3D Quit button HUD (top-right, next to timer) -->
+        <a-entity id="btn-quit-vr" visible="false" position="0.45 0.38 -1">
+          <a-plane class="target" width="0.14" height="0.06" color="#661a1a"
+                   material="shader: flat; opacity: 0.85"
+                   data-action="quit">
+            <a-text value="✕ QUIT" align="center" color="#ff6666" width="1.0"
+                    position="0 0 0.01"></a-text>
+          </a-plane>
+        </a-entity>
       </a-camera>
 
       <!-- Left controller -->

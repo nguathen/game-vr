@@ -6,7 +6,7 @@ plugins {
 
 def twaManifest = [
     applicationId: 'com.nvr.iaptest',
-    hostName: 'fifteen-papers-fcc-lonely.trycloudflare.com',
+    hostName: 'spider-webmasters-themselves-logs.trycloudflare.com',
     launchUrl: '/',
     name: 'NVR IAP Test',
     launcherName: 'NVR IAP',
@@ -33,7 +33,7 @@ android {
         applicationId 'com.nvr.iaptest'
         minSdkVersion 29
         targetSdkVersion 32
-        versionCode 5
+        versionCode 6
         versionName '1.0.0'
 
         resValue "string", "appName", twaManifest.name
@@ -133,3 +133,4 @@ dependencies {
     implementation 'com.meta.androidbrowserhelper:horizonpermissions:1.0.0'
     implementation 'com.meta.androidbrowserhelper:horizonbilling:1.0.0-alpha11'
 }
+
