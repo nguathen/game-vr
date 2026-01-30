@@ -254,25 +254,6 @@ function initMenu(profile) {
     shopBtn.addEventListener('click', () => switchToShop());
   }
 
-  // Exit button
-  const exitBtn = document.getElementById('btn-exit-vr');
-  if (exitBtn) {
-    exitBtn.addEventListener('mouseenter', () => {
-      exitBtn.setAttribute('material', 'opacity', 1.0);
-    });
-    exitBtn.addEventListener('mouseleave', () => {
-      exitBtn.setAttribute('material', 'opacity', 0.9);
-    });
-    exitBtn.addEventListener('click', () => {
-      // Exit VR session first, then navigate to about:blank to close TWA
-      const scene = document.querySelector('a-scene');
-      if (scene && scene.is('vr-mode')) scene.exitVR();
-      setTimeout(() => {
-        window.location.href = 'about:blank';
-      }, 200);
-    });
-  }
-
   // Shop back button
   const shopBackBtn = document.getElementById('btn-shop-back');
   if (shopBackBtn) {
