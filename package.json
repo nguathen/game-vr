@@ -10,7 +10,9 @@
     "server": "node server/index.js",
     "start": "concurrently \"npm run dev\" \"npm run server\"",
     "prod": "npm run build && node server/index.js",
-    "tunnel": "npx cloudflared tunnel --url http://localhost:3001"
+    "tunnel": "npx cloudflared tunnel --url http://localhost:3001",
+    "quest": "powershell -ExecutionPolicy Bypass -File build-deploy-quest.ps1",
+    "quest:build": "powershell -ExecutionPolicy Bypass -File build-deploy-quest.ps1 -SkipDeploy"
   },
   "dependencies": {
     "canvas": "^3.2.1",

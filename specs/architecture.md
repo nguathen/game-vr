@@ -29,7 +29,7 @@
 | Database | SQLite (via better-sqlite3) |
 | Payment | Meta Digital Goods API (Quest) / Stripe (dev fallback) |
 | Dev Server | Vite |
-| Deploy | TWA APK via Meta Quest Store (ALPHA channel) |
+| Deploy | TWA APK via Meta Quest Store (ALPHA channel); `npm run quest` = build + adb install |
 | Tunnel | Cloudflare Tunnel (dev) → production hosting TBD |
 
 ---

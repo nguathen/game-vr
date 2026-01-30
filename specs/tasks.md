@@ -12,7 +12,7 @@
 |--------|-------|
 | In Progress | 0 |
 | Pending | 7 |
-| Completed | 28 |
+| Completed | 29 |
 
 > Note: V1 tasks (TASK-010~020) completed. V2 Phase 1 (TASK-101~105) completed + all 6 issues resolved.
 > V2 Phase 2 (TASK-106~110) completed.
@@ -872,5 +872,6 @@ Reduce console noise in production. Keep only actionable warnings; remove verbos
 | TASK-118 | Friend System & Social | 2026-01-29 |
 | TASK-119 | Game Replay Summary & Share | 2026-01-29 |
 | TASK-120 | UI Polish & Animations | 2026-01-29 |
+| TASK-130 | Quest build + deploy script | 2026-01-30 |
 
 [View all completed tasks ->](./tasks-archive.md)
