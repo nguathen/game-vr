@@ -30,7 +30,7 @@
 | Payment | Meta Digital Goods API (Quest) / Stripe (dev fallback) |
 | Dev Server | Vite |
 | Deploy | TWA APK via Meta Quest Store (ALPHA channel); `.\quest-deploy.ps1` = build + adb install |
-| Tunnel | Cloudflare Tunnel (dev) → production hosting TBD |
+| Hosting | Nginx reverse proxy: `vr.proxyit.online` → `localhost:3001` |
 | Monorepo | `client/` (Vite frontend) + `server/` (Express backend) |
 
 ---
@@ -224,7 +224,7 @@ Score + Retry         Item → Save
 |---------|---------|-------------|
 | Meta Digital Goods API | IAP on Quest | PaymentRequest API + horizonbilling |
 | Meta Quest Store | App distribution | TWA APK via ovr-platform-util |
-| Cloudflare Tunnel | Dev HTTPS tunnel | npx cloudflared |
+| Nginx Proxy | Reverse proxy `vr.proxyit.online` → localhost:3001 | User-managed |
 | Stripe | Dev mode fallback | Stripe Checkout (localhost only) |
 
 ---

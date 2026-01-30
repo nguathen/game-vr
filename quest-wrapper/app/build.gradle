@@ -6,7 +6,7 @@ plugins {
 
 def twaManifest = [
     applicationId: 'com.nvr.iaptest',
-    hostName: 'spider-webmasters-themselves-logs.trycloudflare.com',
+    hostName: 'vr.proxyit.online',
     launchUrl: '/',
     name: 'NVR IAP Test',
     launcherName: 'NVR IAP',
@@ -42,7 +42,7 @@ android {
         resValue "string", "launchUrl", launchUrl
         resValue "string", "hostName", twaManifest.hostName
         resValue "string", "horizonOSAppMode", "immersive"
-        resValue "string", "fullScopeUrl", "https://fifteen-papers-fcc-lonely.trycloudflare.com/"
+        resValue "string", "fullScopeUrl", "https://vr.proxyit.online/"
 
         resValue "color", "colorPrimary", twaManifest.themeColor
         resValue "color", "colorPrimaryDark", twaManifest.themeColorDark

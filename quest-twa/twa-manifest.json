@@ -1,7 +1,7 @@
 {
   "packageId": "com.nvr.iaptest",
   "applicationId": "0",
-  "host": "george-atlantic-labs-without.trycloudflare.com",
+  "host": "vr.proxyit.online",
   "name": "NVR IAP Test",
   "launcherName": "NVR IAP",
   "display": "standalone",
@@ -16,7 +16,7 @@
   "enableMicrophone": false,
   "enableXRScene": false,
   "startUrl": "/",
-  "iconUrl": "https://george-atlantic-labs-without.trycloudflare.com/icon-512.png",
+  "iconUrl": "https://vr.proxyit.online/icon-512.png",
   "splashScreenFadeOutDuration": 300,
   "signingKey": {
     "path": "./android.keystore",
@@ -43,7 +43,7 @@
   "isChromeOSOnly": false,
   "isMetaQuest": true,
   "horizonOSAppMode": "immersive",
-  "fullScopeUrl": "https://george-atlantic-labs-without.trycloudflare.com/",
+  "fullScopeUrl": "https://vr.proxyit.online/",
   "minSdkVersion": 29,
   "orientation": "landscape",
   "additionalTrustedOrigins": [],

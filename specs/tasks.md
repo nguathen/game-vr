@@ -29,6 +29,61 @@ _None_
 
 ## Pending
 
+### TASK-131: Remove Cloudflare Tunnel — Use Nginx Proxy (vr.proxyit.online)
+**Priority:** High
+**Status:** Completed ✅ (2026-01-30)
+**Assigned:** /dev
+**Dependencies:** None
+
+#### Description
+Remove all Cloudflare Tunnel logic. Server runs local on `:3001`, nginx reverse proxy handles `vr.proxyit.online` → `localhost:3001` (user-managed). All hardcoded trycloudflare URLs replaced with `vr.proxyit.online`.
+
+#### Files to Modify
+
+**1. `package.json` (root)**
+- Remove `"tunnel"` script
+
+**2. `quest-deploy.ps1`**
+- Remove `-TunnelUrl` parameter
+- Remove entire tunnel step (lines 101-132): no more `cloudflared`, no log parsing
+- Replace dynamic hostname injection with static `vr.proxyit.online`:
+  - `hostName: 'vr.proxyit.online'` in build.gradle update
+  - `https://vr.proxyit.online` in strings.xml update
+  - `https://vr.proxyit.online/` in manifest.json update
+- Remove tunnel URL regex replacements (use simple string set)
+- Remove tunnel-related output at end ("Keep terminal open...")
+- Remove `-Quick` skip-tunnel logic (simplify: `-SkipApk` just skips APK build)
+
+**3. `quest-wrapper/app/build.gradle`**
+- Replace `hostName: 'spider-webmasters-themselves-logs.trycloudflare.com'` → `hostName: 'vr.proxyit.online'`
+- Replace `resValue` fullScopeUrl trycloudflare → `https://vr.proxyit.online/`
+
+**4. `quest-wrapper/app/src/main/res/values/strings.xml`**
+- Replace trycloudflare URL → `https://vr.proxyit.online`
+
+**5. `client/src/manifest.json`**
+- Replace `ovr_scope_url` trycloudflare → `https://vr.proxyit.online/`
+
+**6. `update-twa.ps1`**
+- Delete file (legacy, no longer needed with stable hostname)
+
+**7. `specs/architecture.md`**
+- ✅ Already updated (Tunnel → Nginx Proxy)
+
+**8. `.gitignore`**
+- Keep `tunnel-log.txt` and `tunnel*.log` entries (harmless)
+
+#### Acceptance Criteria
+- [ ] No cloudflared dependency or tunnel logic in codebase
+- [ ] All URLs point to `vr.proxyit.online`
+- [ ] `quest-deploy.ps1` simplified (no tunnel param/logic)
+- [ ] `update-twa.ps1` deleted
+- [ ] `package.json` has no tunnel script
+- [ ] APK builds with correct hostname
+- [ ] Server still runs on localhost:3001 (no changes to server/)
+
+---
+
 ### TASK-125: VR Menu UI Upgrade — Visual Polish & Layout
 **Priority:** High
 **Status:** Pending

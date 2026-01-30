@@ -7,7 +7,7 @@ APK wrapper to deploy the web app to Meta Quest Store as a Trusted Web Activity 
 - Android Studio (for JDK and Android SDK)
 - Gradle 8.13
 - `ovr-platform-util.exe` (Meta's upload tool)
-- Cloudflare Tunnel (`npx cloudflared`)
+- Nginx reverse proxy (`vr.proxyit.online` → `localhost:3001`)
 
 ## Project Structure
 
@@ -54,32 +54,11 @@ npm run dev
 
 Server runs on `http://localhost:3001`.
 
-### 2. Start Cloudflare Tunnel
-
-```bash
-npx cloudflared tunnel --url http://localhost:3001
-```
-
-Note the tunnel URL (e.g. `https://xxx-yyy-zzz.trycloudflare.com`).
-
-### 3. Update Tunnel URL
-
-Edit `app/build.gradle` — replace the `hostName` and `fullScopeUrl` with the new tunnel URL:
-
-```groovy
-def twaManifest = [
-    hostName: 'YOUR-NEW-TUNNEL.trycloudflare.com',
-    // ...
-]
-// Also update fullScopeUrl:
-resValue "string", "fullScopeUrl", "https://YOUR-NEW-TUNNEL.trycloudflare.com/"
-```
-
-Edit `app/src/main/res/values/strings.xml` — update the domain in `assetStatements`.
+### 2. Build APK
 
 **Bump `versionCode`** each time you upload (Meta rejects duplicate version codes).
 
-### 4. Build APK
+Hostname is set to `vr.proxyit.online` in `build.gradle`, `strings.xml`, and `manifest.json`.
 
 ```bat
 set JAVA_HOME=C:\Program Files\Android\Android Studio\jbr
@@ -134,7 +113,7 @@ Option B — **Via Meta Store**: Add yourself as alpha tester in Meta Developer 
 This is a **Trusted Web Activity** (TWA) — not a WebView. The app uses Meta's forked `androidbrowserhelper` library which launches your web app inside the Quest's built-in browser with full Digital Goods API support for IAP.
 
 Key components:
-- **LauncherActivity** — opens the TWA pointing to the tunnel URL
+- **LauncherActivity** — opens the TWA pointing to `vr.proxyit.online`
 - **DelegationService** — registers billing and platform SDK handlers
 - **PaymentActivity/PaymentService** — handles `org.chromium.intent.action.PAY` for Quest billing
 - **horizonos.pwa.APP_MODE** — set to `immersive` for VR mode
@@ -142,5 +121,5 @@ Key components:
 ## Troubleshooting
 
 - **"Horizon SDK not found"** on upload: Make sure you're using the TWA structure with `androidbrowserhelper` library (not a plain WebView).
-- **Tunnel URL changed**: Update `hostName`, `fullScopeUrl` in build.gradle + `assetStatements` in strings.xml, bump `versionCode`, rebuild & re-upload.
+- **Hostname change**: Update `hostName`, `fullScopeUrl` in build.gradle + `assetStatements` in strings.xml + `ovr_scope_url` in manifest.json, bump `versionCode`, rebuild & re-upload.
 - **Build fails**: Ensure `android.useAndroidX=true` in `gradle.properties`.

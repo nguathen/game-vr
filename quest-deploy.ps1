@@ -1,15 +1,11 @@
 # Quest VR Deploy Script
 # Usage:
-#   .\quest-deploy.ps1                    # Full deploy (build + tunnel + APK + install)
+#   .\quest-deploy.ps1                    # Full deploy (build + APK + install)
 #   .\quest-deploy.ps1 -SkipApk           # Code change only (build + sync components + restart app)
-#   .\quest-deploy.ps1 -TunnelUrl "https://xxx.trycloudflare.com"  # Reuse existing tunnel
-#   .\quest-deploy.ps1 -Quick             # Fastest: just build web + restart app (no APK, no tunnel)
 #   .\quest-deploy.ps1 -RestartServer     # Kill old server + start new one (use after editing server/ code)
 
 param(
-    [string]$TunnelUrl = "",
     [switch]$SkipApk,
-    [switch]$Quick,
     [switch]$RestartServer
 )
 
@@ -20,6 +16,7 @@ $ADB = "C:\Users\zohof\AppData\Local\Android\Sdk\platform-tools\adb.exe"
 $GradleBat = "C:\Users\zohof\.gradle\wrapper\dists\gradle-8.13-bin\5xuhj0ry160q40clulazy9h7d\gradle-8.13\bin\gradle.bat"
 $AppPackage = "com.nvr.iaptest"
 $BrowserPackage = "com.oculus.browser"
+$Hostname = "vr.proxyit.online"
 
 $env:JAVA_HOME = "C:\Program Files\Android\Android Studio\jbr"
 $env:ANDROID_HOME = "C:\Users\zohof\AppData\Local\Android\Sdk"
@@ -42,8 +39,6 @@ if ($devices -notmatch "\bdevice\b") {
     exit 1
 }
 Write-OK "Quest connected"
-
-if ($Quick) { $SkipApk = $true }
 
 $totalSteps = if ($SkipApk) { 3 } else { 6 }
 $step = 0
@@ -70,116 +65,64 @@ if ($LASTEXITCODE -ne 0) {
 }
 Write-OK "dist/ built"
 
-if (-not $Quick) {
-    # --- Step: Server ---
-    $step++
-    Write-Step $step $totalSteps "Checking server"
+# --- Step: Server ---
+$step++
+Write-Step $step $totalSteps "Checking server"
+$serverOk = $false
+try {
+    $r = Invoke-WebRequest -Uri "http://localhost:3001/api/health" -UseBasicParsing -TimeoutSec 3 -ErrorAction Stop
+    $serverOk = $true
+} catch {}
+
+if ($RestartServer -and $serverOk) {
+    Write-Host "  Killing old server..." -ForegroundColor Gray
+    Get-Process -Name "node" -ErrorAction SilentlyContinue |
+        Where-Object { $_.CommandLine -match "server[/\\]index\.js" -or $_.CommandLine -match "server\\index\.js" } |
+        Stop-Process -Force -ErrorAction SilentlyContinue
+    Start-Sleep -Seconds 1
     $serverOk = $false
-    try {
-        $r = Invoke-WebRequest -Uri "http://localhost:3001/api/health" -UseBasicParsing -TimeoutSec 3 -ErrorAction Stop
-        $serverOk = $true
-    } catch {}
+}
 
-    if ($RestartServer -and $serverOk) {
-        Write-Host "  Killing old server..." -ForegroundColor Gray
-        Get-Process -Name "node" -ErrorAction SilentlyContinue |
-            Where-Object { $_.CommandLine -match "server[/\\]index\.js" -or $_.CommandLine -match "server\\index\.js" } |
-            Stop-Process -Force -ErrorAction SilentlyContinue
-        Start-Sleep -Seconds 1
-        $serverOk = $false
+if ($serverOk) {
+    Write-OK "Server already running on :3001"
+} else {
+    Write-Host "  Starting server..." -ForegroundColor Gray
+    Start-Process -FilePath "node" -ArgumentList "server/index.js" -WorkingDirectory $ProjectRoot -WindowStyle Minimized
+    Start-Sleep -Seconds 3
+    Write-OK "Server started"
+}
+
+if (-not $SkipApk) {
+    # --- Step: Update TWA + build APK ---
+    $step++
+    Write-Step $step $totalSteps "Building APK"
+
+    # Update build.gradle (version bump)
+    $buildGradle = Join-Path $QuestWrapper "app\build.gradle"
+    $content = Get-Content $buildGradle -Raw
+    if ($content -match 'versionCode (\d+)') {
+        $oldVer = [int]$Matches[1]
+        $newVer = $oldVer + 1
+        $content = $content -replace "versionCode $oldVer", "versionCode $newVer"
     }
+    Set-Content $buildGradle $content
 
-    if ($serverOk) {
-        Write-OK "Server already running on :3001"
-    } else {
-        Write-Host "  Starting server..." -ForegroundColor Gray
-        Start-Process -FilePath "node" -ArgumentList "server/index.js" -WorkingDirectory $ProjectRoot -WindowStyle Minimized
-        Start-Sleep -Seconds 3
-        Write-OK "Server started"
+    # Clean & build
+    $appBuild = Join-Path $QuestWrapper "app\build"
+    if (Test-Path $appBuild) { Remove-Item -Recurse -Force $appBuild }
+    & $GradleBat --no-daemon -p $QuestWrapper assembleRelease 2>&1 | Out-Null
+    if ($LASTEXITCODE -ne 0) {
+        Write-Err "Gradle build failed!"
+        exit 1
     }
+    Write-OK "APK built (versionCode: $newVer)"
 
-    # --- Step: Tunnel ---
-    if (-not $SkipApk -or -not $TunnelUrl) {
-        $step++
-        if ($TunnelUrl) {
-            Write-Step $step $totalSteps "Using provided tunnel"
-            Write-OK $TunnelUrl
-        } else {
-            Write-Step $step $totalSteps "Starting Cloudflare tunnel"
-            $tunnelLog = Join-Path $ProjectRoot "tunnel-log.txt"
-            if (Test-Path $tunnelLog) { Remove-Item $tunnelLog }
-            Start-Process -FilePath "npx.cmd" -ArgumentList "--yes","cloudflared","tunnel","--url","http://localhost:3001" -RedirectStandardError $tunnelLog -WindowStyle Hidden
-
-            $maxWait = 30
-            $waited = 0
-            while ($waited -lt $maxWait) {
-                Start-Sleep -Seconds 2
-                $waited += 2
-                if (Test-Path $tunnelLog) {
-                    $match = Get-Content $tunnelLog | Select-String "https://[a-z0-9-]+\.trycloudflare\.com"
-                    if ($match) {
-                        $TunnelUrl = $match.Matches[0].Value.Trim()
-                        break
-                    }
-                }
-            }
-            if (-not $TunnelUrl) {
-                Write-Err "Tunnel failed after ${maxWait}s"
-                exit 1
-            }
-            Write-OK "Tunnel: $TunnelUrl"
-        }
-    }
-
-    if (-not $SkipApk) {
-        $hostname = ($TunnelUrl -replace 'https://','').Trim().TrimEnd('/')
-
-        # --- Step: Update TWA + build APK ---
-        $step++
-        Write-Step $step $totalSteps "Building APK"
-
-        # Update build.gradle
-        $buildGradle = Join-Path $QuestWrapper "app\build.gradle"
-        $content = Get-Content $buildGradle -Raw
-        if ($content -match 'versionCode (\d+)') {
-            $oldVer = [int]$Matches[1]
-            $newVer = $oldVer + 1
-            $content = $content -replace "versionCode $oldVer", "versionCode $newVer"
-        }
-        $content = $content -replace "hostName: '[^']+'", "hostName: '$hostname'"
-        Set-Content $buildGradle $content
-
-        # Update strings.xml
-        $stringsXml = Join-Path $QuestWrapper "app\src\main\res\values\strings.xml"
-        $strContent = Get-Content $stringsXml -Raw
-        $strContent = $strContent -replace 'https://[^"]*trycloudflare\.com', "https://$hostname"
-        Set-Content $stringsXml $strContent
-
-        # Update manifest.json
-        $manifest = Join-Path $ProjectRoot "client\src\manifest.json"
-        if (Test-Path $manifest) {
-            $mContent = Get-Content $manifest -Raw
-            $mContent = $mContent -replace 'https://[^"]*trycloudflare\.com[^"]*', "https://$hostname/"
-            Set-Content $manifest $mContent
-        }
-
-        # Clean & build
-        $appBuild = Join-Path $QuestWrapper "app\build"
-        if (Test-Path $appBuild) { Remove-Item -Recurse -Force $appBuild }
-        & $GradleBat --no-daemon -p $QuestWrapper assembleRelease 2>&1 | Out-Null
-        if ($LASTEXITCODE -ne 0) {
-            Write-Err "Gradle build failed!"
-            exit 1
-        }
-        Write-OK "APK built (versionCode: $newVer)"
-
-        # --- Step: Install APK ---
-        $step++
-        Write-Step $step $totalSteps "Installing APK on Quest"
-        $apk = Join-Path $QuestWrapper "app\build\outputs\apk\release\app-release.apk"
-        & $ADB install -r $apk 2>&1 | Out-Null
-        Write-OK "APK installed"
-    }
+    # --- Step: Install APK ---
+    $step++
+    Write-Step $step $totalSteps "Installing APK on Quest"
+    $apk = Join-Path $QuestWrapper "app\build\outputs\apk\release\app-release.apk"
+    & $ADB install -r $apk 2>&1 | Out-Null
+    Write-OK "APK installed"
 }
 
 # --- Always: Restart app on Quest ---
@@ -193,8 +136,5 @@ Write-OK "App restarted"
 
 # --- Done ---
 Write-Host "`n=== Deploy Complete ===" -ForegroundColor Cyan
-if ($TunnelUrl) {
-    Write-Host "Tunnel: $TunnelUrl" -ForegroundColor Gray
-    Write-Host "Keep terminal open to maintain tunnel." -ForegroundColor Gray
-}
+Write-Host "Hostname: $Hostname" -ForegroundColor Gray
 Write-Host ""

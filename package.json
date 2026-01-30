@@ -11,7 +11,6 @@
     "server": "cd server && npm start",
     "prod": "npm run build && npm run server",
     "install:all": "cd client && npm install && cd ../server && npm install",
-    "tunnel": "npx cloudflared tunnel --url http://localhost:3001",
     "quest": "powershell -ExecutionPolicy Bypass -File quest-deploy.ps1"
   },
   "devDependencies": {
