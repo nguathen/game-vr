@@ -17,7 +17,7 @@ quest-wrapper/
 │   ├── build.gradle              # TWA config, dependencies, tunnel URL
 │   ├── src/main/
 │   │   ├── AndroidManifest.xml   # Quest VR manifest with billing components
-│   │   ├── java/com/nvr/iaptest/
+│   │   ├── java/com/nvr/vrquest/
 │   │   │   ├── LauncherActivity.java   # TWA launcher (extends androidbrowserhelper)
 │   │   │   ├── Application.java        # App class
 │   │   │   └── DelegationService.java  # Billing + Platform SDK handlers
@@ -94,7 +94,7 @@ Option B — **Via Meta Store**: Add yourself as alpha tester in Meta Developer 
 | Field | Value |
 |-------|-------|
 | App ID | 34536747552582674 |
-| Package | com.nvr.iaptest |
+| Package | com.nvr.vrquest |
 | Platform | ANDROID_6DOF |
 | Compile SDK | 32 |
 | Target SDK | 32 |

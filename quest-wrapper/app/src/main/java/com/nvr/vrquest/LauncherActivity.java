@@ -1,4 +1,4 @@
-package com.nvr.iaptest;
+package com.nvr.vrquest;
 
 import android.content.pm.ActivityInfo;
 import android.net.Uri;

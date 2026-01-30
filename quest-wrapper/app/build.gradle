@@ -5,11 +5,11 @@ plugins {
 }
 
 def twaManifest = [
-    applicationId: 'com.nvr.iaptest',
+    applicationId: 'com.nvr.vrquest',
     hostName: 'vr.proxyit.online',
     launchUrl: '/',
-    name: 'NVR IAP Test',
-    launcherName: 'NVR IAP',
+    name: 'VR Quest',
+    launcherName: 'VR Quest',
     themeColor: '#000000',
     themeColorDark: '#000000',
     navigationColor: '#000000',
@@ -28,12 +28,12 @@ def twaManifest = [
 
 android {
     compileSdkVersion 32
-    namespace 'com.nvr.iaptest'
+    namespace 'com.nvr.vrquest'
     defaultConfig {
-        applicationId 'com.nvr.iaptest'
+        applicationId 'com.nvr.vrquest'
         minSdkVersion 29
         targetSdkVersion 32
-        versionCode 6
+        versionCode 7
         versionName '1.0.0'
 
         resValue "string", "appName", twaManifest.name
@@ -133,4 +133,5 @@ dependencies {
     implementation 'com.meta.androidbrowserhelper:horizonpermissions:1.0.0'
     implementation 'com.meta.androidbrowserhelper:horizonbilling:1.0.0-alpha11'
 }
+
 

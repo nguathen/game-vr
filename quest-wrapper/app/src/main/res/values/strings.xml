@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">NVR IAP Test</string>
+    <string name="app_name">VR Quest</string>
     <string name="assetStatements">
         [{
             \"relation\": [\"delegate_permission/common.handle_all_urls\"],

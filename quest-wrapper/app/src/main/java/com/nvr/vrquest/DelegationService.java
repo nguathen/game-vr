@@ -1,4 +1,4 @@
-package com.nvr.iaptest;
+package com.nvr.vrquest;
 
 import com.meta.androidbrowserhelper.horizonbilling.digitalgoods.DigitalGoodsRequestHandler;
 import com.meta.androidbrowserhelper.horizonpermissions.PermissionRequestExtraCommandHandler;

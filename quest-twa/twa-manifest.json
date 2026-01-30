@@ -1,9 +1,9 @@
 {
-  "packageId": "com.nvr.iaptest",
+  "packageId": "com.nvr.vrquest",
   "applicationId": "0",
   "host": "vr.proxyit.online",
-  "name": "NVR IAP Test",
-  "launcherName": "NVR IAP",
+  "name": "VR Quest",
+  "launcherName": "VR Quest",
   "display": "standalone",
   "themeColor": "#000000",
   "themeColorDark": "#000000",

@@ -1,4 +1,4 @@
-package com.nvr.iaptest;
+package com.nvr.vrquest;
 
 public class Application extends android.app.Application {
     @Override

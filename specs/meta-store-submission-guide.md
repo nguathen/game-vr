@@ -1,7 +1,7 @@
 # Meta Quest Store Submission Guide
 
 > Quick reference for submitting apps to Meta Quest Store.
-> Based on NVR IAP Test submission (Jan 29, 2026).
+> Based on VR Quest submission (Jan 29, 2026).
 
 ---
 

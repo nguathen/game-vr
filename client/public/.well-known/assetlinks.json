@@ -2,7 +2,7 @@
   "relation": ["delegate_permission/common.handle_all_urls"],
   "target": {
     "namespace": "android_app",
-    "package_name": "com.nvr.iaptest",
+    "package_name": "com.nvr.vrquest",
     "sha256_cert_fingerprints": ["A2:62:20:1C:8E:D1:54:D9:99:22:A3:40:67:F3:83:46:F2:9F:F7:7B:53:94:A2:7E:57:F1:69:BC:69:5D:D3:78"]
   }
 }]
