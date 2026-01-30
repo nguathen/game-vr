@@ -39,7 +39,9 @@ function Write-Err($msg) {
 
 # --- Check ADB device ---
 Write-Host "=== Quest VR Deploy ===" -ForegroundColor Cyan
+$ErrorActionPreference = "Continue"
 $devices = & $ADB devices 2>&1
+$ErrorActionPreference = "Stop"
 if ($devices -notmatch "\bdevice\b") {
     Write-Err "No Quest device connected. Check ADB."
     exit 1
