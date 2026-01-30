@@ -254,17 +254,19 @@ function initMenu(profile) {
     shopBtn.addEventListener('click', () => switchToShop());
   }
 
-  // Exit button — clear history then go back to close TWA
+  // Exit button
   const exitBtn = document.getElementById('btn-exit-vr');
+  console.log('[Menu] Exit button found:', !!exitBtn);
   if (exitBtn) {
     exitBtn.addEventListener('mouseenter', () => {
+      console.log('[Menu] Exit hover');
       exitBtn.setAttribute('material', 'opacity', 1.0);
     });
     exitBtn.addEventListener('mouseleave', () => {
       exitBtn.setAttribute('material', 'opacity', 0.9);
     });
     exitBtn.addEventListener('click', () => {
-      // Navigate back — if no history, TWA closes and returns to Quest Home
+      console.log('[Menu] Exit clicked!');
       window.history.back();
     });
   }
