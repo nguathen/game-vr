@@ -94,7 +94,7 @@ Option B — **Via Meta Store**: Add yourself as alpha tester in Meta Developer 
 | Field | Value |
 |-------|-------|
 | App ID | 34536747552582674 |
-| Package | com.nvr.vrquest |
+| Package | com.nvr.iaptest |
 | Platform | ANDROID_6DOF |
 | Compile SDK | 32 |
 | Target SDK | 32 |

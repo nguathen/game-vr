@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VR Quest Game V2</title>
+  <script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
+  <script type="module" crossorigin src="/assets/main-TZaPjI5B.js"></script>
+  <link rel="modulepreload" crossorigin href="/assets/auth-manager-DjZ92ISH.js">
+  <link rel="modulepreload" crossorigin href="/assets/audio-manager-BoM9ZqFN.js">
+  <link rel="modulepreload" crossorigin href="/assets/weapon-system-BnhBiZik.js">
+  <link rel="stylesheet" crossorigin href="/assets/auth-manager-aBq4tpvn.css">
+</head>
+<body>
+  <a-scene id="scene" vr-mode-ui="enterVRButton: #enter-vr-btn">
+    <!-- Player Rig -->
+    <a-entity id="player-rig" position="0 0 0">
+      <a-camera id="camera" position="0 1.6 0" wasd-controls-enabled="false" look-controls>
+      </a-camera>
+
+      <!-- Left controller -->
+      <a-entity id="left-hand"
+                laser-controls="hand: left; model: false; lineColor: #44aaff; lineOpacity: 0.5"
+                raycaster="objects: .clickable; far: 20; lineColor: #44aaff; lineOpacity: 0.5"
+                cursor="fuse: false; rayOrigin: entity">
+      </a-entity>
+
+      <!-- Right controller -->
+      <a-entity id="right-hand"
+                laser-controls="hand: right; model: false; lineColor: #ff4444; lineOpacity: 0.7"
+                raycaster="objects: .clickable; far: 20; lineColor: #ff4444; lineOpacity: 0.7"
+                cursor="fuse: false; rayOrigin: entity">
+      </a-entity>
+    </a-entity>
+
+    <!-- Environment -->
+    <a-sky color="#0a0a1a"></a-sky>
+    <a-plane position="0 0 0" rotation="-90 0 0" width="50" height="50" color="#0d1b2a"></a-plane>
+    <a-plane position="0 0.01 0" rotation="-90 0 0" width="20" height="20"
+             material="color: #1b2838; wireframe: true; opacity: 0.2"
+             segments-width="20" segments-height="20"></a-plane>
+
+    <a-light type="ambient" color="#222244" intensity="0.4"></a-light>
+    <a-light type="point" position="0 6 -4" intensity="1" color="#4466ff" distance="20"></a-light>
+    <a-light type="point" position="-4 4 -6" intensity="0.5" color="#ff4466" distance="15"></a-light>
+    <a-light type="point" position="4 4 -6" intensity="0.5" color="#44ff66" distance="15"></a-light>
+
+    <!-- Menu panel background -->
+    <a-plane position="0 1.6 -3.5" width="4" height="3" color="#0a0a2a"
+             material="shader: flat; opacity: 0.85"></a-plane>
+
+    <!-- Title -->
+    <a-text value="VR QUEST V2" position="0 2.8 -3.4" align="center"
+            color="#00d4ff" width="6"></a-text>
+    <a-text value="Target Shooter" position="0 2.5 -3.4" align="center"
+            color="#666688" width="3.5"></a-text>
+
+    <!-- Player Info -->
+    <a-text id="player-info" value="Lv.1 | 0 Coins" position="0 2.2 -3.4" align="center"
+            color="#ffd700" width="3"></a-text>
+
+    <!-- Game Mode Section -->
+    <a-text value="GAME MODE" position="0 1.9 -3.4" align="center"
+            color="#aaaacc" width="2.5"></a-text>
+
+    <a-entity id="mode-buttons" position="0 1.6 -3.4">
+      <!-- Populated by JS -->
+    </a-entity>
+
+    <!-- Weapon Section -->
+    <a-text value="WEAPON" position="0 1.2 -3.4" align="center"
+            color="#aaaacc" width="2.5"></a-text>
+
+    <a-entity id="weapon-buttons" position="0 0.9 -3.4">
+      <!-- Populated by JS -->
+    </a-entity>
+
+    <!-- PLAY Button -->
+    <a-plane id="btn-play-vr" class="clickable" position="0 0.4 -3.4"
+             width="1.4" height="0.45" color="#006644"
+             material="shader: flat; opacity: 0.9"
+             data-action="play">
+      <a-text value="PLAY" align="center" color="#00ff88" width="6"
+              position="0 0 0.01"></a-text>
+    </a-plane>
+
+    <!-- Decorative floating targets -->
+    <a-sphere position="-3 2 -8" radius="0.35" material="color: #e94560; shader: flat"
+              animation="property: position; to: -3 2.5 -8; dur: 2000; easing: easeInOutSine; loop: true; dir: alternate"></a-sphere>
+    <a-sphere position="3 2.5 -9" radius="0.25" material="color: #2ed573; shader: flat"
+              animation="property: position; to: 3 3 -9; dur: 1800; easing: easeInOutSine; loop: true; dir: alternate"></a-sphere>
+    <a-sphere position="0 3.5 -11" radius="0.4" material="color: #1e90ff; shader: flat"
+              animation="property: position; to: 0 4 -11; dur: 2400; easing: easeInOutSine; loop: true; dir: alternate"></a-sphere>
+    <a-sphere position="-5 1.5 -7" radius="0.2" material="color: #ffa502; shader: flat"
+              animation="property: position; to: -5 2 -7; dur: 1600; easing: easeInOutSine; loop: true; dir: alternate"></a-sphere>
+    <a-sphere position="5 3 -10" radius="0.3" material="color: #a855f7; shader: flat"
+              animation="property: position; to: 5 3.5 -10; dur: 2200; easing: easeInOutSine; loop: true; dir: alternate"></a-sphere>
+
+    <a-torus position="0 4.5 -12" radius="1.5" radius-tubular="0.03"
+             material="color: #00d4ff; shader: flat; opacity: 0.3"
+             animation="property: rotation; to: 360 360 0; dur: 10000; easing: linear; loop: true"></a-torus>
+  </a-scene>
+
+</body>
+</html>

@@ -7,7 +7,7 @@
   "background_color": "#000000",
   "theme_color": "#000000",
   "ovr_multi_tab_enabled": false,
-  "ovr_package_name": "com.nvr.vrquest",
+  "ovr_package_name": "com.nvr.iaptest",
   "ovr_scope_url": "https://vr.proxyit.online/"
 }
 

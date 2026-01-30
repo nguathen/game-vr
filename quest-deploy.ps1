@@ -12,7 +12,7 @@ param(
 $ErrorActionPreference = "Stop"
 $ProjectRoot = $PSScriptRoot
 $QuestWrapper = Join-Path $ProjectRoot "quest-wrapper"
-$AppPackage = "com.nvr.vrquest"
+$AppPackage = "com.nvr.iaptest"
 $BrowserPackage = "com.oculus.browser"
 $Hostname = "vr.proxyit.online"
 
