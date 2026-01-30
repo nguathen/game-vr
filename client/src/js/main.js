@@ -264,9 +264,8 @@ function initMenu(profile) {
       exitBtn.setAttribute('material', 'opacity', 0.9);
     });
     exitBtn.addEventListener('click', () => {
-      // Replace current entry so there's no forward history, then go back
-      // This causes TWA to finish since there's nothing to go back to
-      window.location.replace('about:blank');
+      // Navigate back — if no history, TWA closes and returns to Quest Home
+      window.history.back();
     });
   }
 
