@@ -2,6 +2,8 @@ import authManager from './core/auth-manager.js';
 import { GAME_MODES } from './game/game-modes.js';
 import { WEAPONS } from './game/weapon-system.js';
 import { startGame as startGameSession } from './game-main.js';
+import iapManager from './iap/iap-manager.js';
+import { showToast } from './ui/toast.js';
 
 let selectedMode = 'timeAttack';
 let selectedWeapon = 'pistol';
@@ -96,10 +98,13 @@ function buildWeaponButtons(profile) {
 
 // Switch from menu to game scene (SPA — no page navigation)
 function switchToGame() {
-  // Hide menu, show game
+  // Hide menu + shop, show game
+  shopVisible = false;
   const menuContent = document.getElementById('menu-content');
   const gameContent = document.getElementById('game-content');
+  const shopContent = document.getElementById('shop-content');
   menuContent.setAttribute('visible', 'false');
+  if (shopContent) shopContent.setAttribute('visible', 'false');
   gameContent.setAttribute('visible', 'true');
 
   // Show HUD
@@ -146,7 +151,9 @@ function switchToGame() {
 function switchToMenu() {
   const menuContent = document.getElementById('menu-content');
   const gameContent = document.getElementById('game-content');
+  const shopContent = document.getElementById('shop-content');
   gameContent.setAttribute('visible', 'false');
+  if (shopContent) shopContent.setAttribute('visible', 'false');
   menuContent.setAttribute('visible', 'true');
 
   // Hide HUD
@@ -213,6 +220,33 @@ function initMenu(profile) {
       switchToGame();
     });
   }
+
+  // Shop button
+  const shopBtn = document.getElementById('btn-shop-vr');
+  if (shopBtn) {
+    shopBtn.addEventListener('mouseenter', () => {
+      shopBtn.setAttribute('material', 'opacity', 1.0);
+    });
+    shopBtn.addEventListener('mouseleave', () => {
+      shopBtn.setAttribute('material', 'opacity', 0.9);
+    });
+    shopBtn.addEventListener('click', () => switchToShop());
+  }
+
+  // Shop back button
+  const shopBackBtn = document.getElementById('btn-shop-back');
+  if (shopBackBtn) {
+    shopBackBtn.addEventListener('mouseenter', () => {
+      shopBackBtn.setAttribute('material', 'opacity', 1.0);
+    });
+    shopBackBtn.addEventListener('mouseleave', () => {
+      shopBackBtn.setAttribute('material', 'opacity', 0.9);
+    });
+    shopBackBtn.addEventListener('click', () => switchFromShop());
+  }
+
+  // Init IAP manager
+  iapManager.init().catch(() => {});
 }
 
 // Direct Three.js raycasting — bypasses A-Frame cursor system entirely
@@ -232,15 +266,20 @@ function setupMouseClick(scene) {
     raycaster.setFromCamera(mouse, camera);
 
     const clickables = [];
+    const hiddenContainers = ['menu-content', 'shop-content', 'game-content']
+      .map(id => document.getElementById(id))
+      .filter(el => el && !el.object3D.visible);
+
     scene.querySelectorAll('.clickable').forEach(el => {
-      if (el.object3D) {
-        el.object3D.traverse(child => {
-          if (child.isMesh) {
-            child.__aframeEl = el;
-            clickables.push(child);
-          }
-        });
-      }
+      if (!el.object3D || !el.object3D.visible) return;
+      // Skip elements inside a hidden content container
+      if (hiddenContainers.some(c => c.contains(el))) return;
+      el.object3D.traverse(child => {
+        if (child.isMesh) {
+          child.__aframeEl = el;
+          clickables.push(child);
+        }
+      });
     });
 
     const hits = raycaster.intersectObjects(clickables, false);
@@ -270,6 +309,151 @@ function setupControllerClick(scene) {
     hand.addEventListener('selectstart', doClick);
     hand.addEventListener('gripdown', doClick);
   });
+}
+
+// ==================== SHOP ====================
+
+function switchToShop() {
+  document.getElementById('menu-content').setAttribute('visible', 'false');
+  document.getElementById('shop-content').setAttribute('visible', 'true');
+  shopVisible = true;
+  buildShopCards();
+  setTimeout(() => refreshRaycasters(), 100);
+}
+
+function switchFromShop() {
+  shopVisible = false;
+  document.getElementById('shop-content').setAttribute('visible', 'false');
+  document.getElementById('menu-content').setAttribute('visible', 'true');
+  // Update coins on menu
+  const profile = authManager.profile;
+  if (profile) {
+    const info = document.getElementById('player-info');
+    if (info) info.setAttribute('value', `Lv.${profile.level} | ${profile.coins} Coins`);
+  }
+  setTimeout(() => refreshRaycasters(), 100);
+}
+
+function buildShopCards() {
+  const container = document.getElementById('shop-cards');
+  container.innerHTML = '';
+
+  const products = iapManager.products;
+  const startX = -(products.length - 1) * 1.1 / 2;
+
+  // Update balance
+  const balanceEl = document.getElementById('shop-balance');
+  const profile = authManager.profile;
+  if (balanceEl && profile) {
+    const premiumBadge = profile.isPremium ? ' | ⭐ Premium' : '';
+    balanceEl.setAttribute('value', `Coins: ${profile.coins || 0}${premiumBadge}`);
+  }
+
+  products.forEach((product, i) => {
+    const x = startX + i * 1.1;
+    const owned = product.type === 'non_consumable' && iapManager.isOwned(product.id);
+
+    // Card background
+    const card = document.createElement('a-plane');
+    card.setAttribute('position', `${x} 0 0`);
+    card.setAttribute('width', '0.95');
+    card.setAttribute('height', '1.1');
+    card.setAttribute('color', owned ? '#1a3a1a' : '#1a1a3a');
+    card.setAttribute('material', 'shader: flat; opacity: 0.9');
+
+    // Product icon
+    const icon = document.createElement('a-text');
+    const emoji = product.type === 'consumable' ? '🪙' : '⭐';
+    icon.setAttribute('value', emoji);
+    icon.setAttribute('position', '0 0.35 0.01');
+    icon.setAttribute('align', 'center');
+    icon.setAttribute('width', '3');
+    card.appendChild(icon);
+
+    // Product name
+    const name = document.createElement('a-text');
+    name.setAttribute('value', product.name);
+    name.setAttribute('position', '0 0.1 0.01');
+    name.setAttribute('align', 'center');
+    name.setAttribute('color', '#ffffff');
+    name.setAttribute('width', '2.5');
+    card.appendChild(name);
+
+    // Description
+    const desc = document.createElement('a-text');
+    desc.setAttribute('value', product.description);
+    desc.setAttribute('position', '0 -0.08 0.01');
+    desc.setAttribute('align', 'center');
+    desc.setAttribute('color', '#888899');
+    desc.setAttribute('width', '1.8');
+    card.appendChild(desc);
+
+    // Price
+    const price = document.createElement('a-text');
+    price.setAttribute('value', iapManager.getDisplayPrice(product));
+    price.setAttribute('position', '0 -0.25 0.01');
+    price.setAttribute('align', 'center');
+    price.setAttribute('color', '#ffd700');
+    price.setAttribute('width', '2.5');
+    card.appendChild(price);
+
+    // Buy button
+    const btn = document.createElement('a-plane');
+    btn.classList.add('clickable');
+    btn.setAttribute('position', `0 -0.42 0.02`);
+    btn.setAttribute('width', '0.7');
+    btn.setAttribute('height', '0.2');
+
+    const btnText = document.createElement('a-text');
+    btnText.setAttribute('position', '0 0 0.01');
+    btnText.setAttribute('align', 'center');
+    btnText.setAttribute('width', '3');
+
+    if (owned) {
+      btn.setAttribute('color', '#444444');
+      btn.setAttribute('material', 'shader: flat; opacity: 0.7');
+      btnText.setAttribute('value', 'OWNED');
+      btnText.setAttribute('color', '#88ff88');
+    } else {
+      btn.setAttribute('color', '#006644');
+      btn.setAttribute('material', 'shader: flat; opacity: 0.9');
+      btnText.setAttribute('value', 'BUY');
+      btnText.setAttribute('color', '#00ff88');
+
+      btn.addEventListener('mouseenter', () => {
+        btn.setAttribute('material', 'opacity', 1.0);
+      });
+      btn.addEventListener('mouseleave', () => {
+        btn.setAttribute('material', 'opacity', 0.9);
+      });
+      btn.addEventListener('click', () => handlePurchase(product));
+    }
+
+    btn.appendChild(btnText);
+    card.appendChild(btn);
+    container.appendChild(card);
+  });
+
+  refreshRaycasters();
+}
+
+let shopVisible = false;
+
+async function handlePurchase(product) {
+  if (!shopVisible) return;
+  try {
+    const result = await iapManager.purchase(product.id);
+    if (result.success) {
+      const msg = product.type === 'consumable'
+        ? `Purchased! +${product.coinAmount} Coins`
+        : `${product.name} unlocked!`;
+      showToast(msg, 'success');
+      buildShopCards();
+    }
+  } catch (err) {
+    showToast('Purchase failed', 'error');
+    console.warn('[Shop] Purchase error:', err.message);
+  }
 }
 
 authManager.waitReady().then(() => {

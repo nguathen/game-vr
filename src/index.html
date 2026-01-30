@@ -93,7 +93,7 @@
       <a-light type="point" position="4 4 -6" intensity="0.5" color="#44ff66" distance="15"></a-light>
 
       <!-- Menu panel background -->
-      <a-plane position="0 1.6 -3.5" width="4" height="3" color="#0a0a2a"
+      <a-plane position="0 1.4 -3.5" width="4" height="3.6" color="#0a0a2a"
                material="shader: flat; opacity: 0.85"></a-plane>
 
       <!-- Title -->
@@ -117,12 +117,22 @@
       <a-entity id="weapon-buttons" position="0 0.9 -3.4"></a-entity>
 
       <!-- PLAY Button -->
-      <a-plane id="btn-play-vr" class="clickable" position="0 0.4 -3.4"
+      <a-plane id="btn-play-vr" class="clickable" position="0 0.35 -3.3"
                width="1.4" height="0.45" color="#006644"
                material="shader: flat; opacity: 0.9"
                data-action="play">
         <a-text value="PLAY" align="center" color="#00ff88" width="6"
                 position="0 0 0.01"></a-text>
+      </a-plane>
+
+      <!-- SHOP Icon (bottom-right corner of panel) -->
+      <a-plane id="btn-shop-vr" class="clickable" position="1.55 -0.1 -3.3"
+               width="0.5" height="0.5" color="#4a3800"
+               material="shader: flat; opacity: 0.9; side: double">
+        <a-text value="&#128722;" align="center" width="4"
+                position="0 0.05 0.01"></a-text>
+        <a-text value="SHOP" align="center" color="#ffd700" width="2.5"
+                position="0 -0.15 0.01" scale="0.8 0.8 0.8"></a-text>
       </a-plane>
 
       <!-- Decorative floating targets -->
@@ -139,6 +149,40 @@
       <a-torus position="0 4.5 -12" radius="1.5" radius-tubular="0.03"
                material="color: #00d4ff; shader: flat; opacity: 0.3"
                animation="property: rotation; to: 360 360 0; dur: 10000; easing: linear; loop: true"></a-torus>
+    </a-entity>
+
+    <!-- ==================== SHOP CONTENT (hidden until SHOP) ==================== -->
+    <a-entity id="shop-content" visible="false">
+      <!-- Floor -->
+      <a-plane position="0 0 0" rotation="-90 0 0" width="50" height="50" color="#0d1b2a"></a-plane>
+
+      <!-- Lighting -->
+      <a-light type="point" position="0 6 -4" intensity="1" color="#ffd700" distance="20"></a-light>
+      <a-light type="point" position="-4 4 -6" intensity="0.5" color="#44ff66" distance="15"></a-light>
+      <a-light type="point" position="4 4 -6" intensity="0.5" color="#ff4466" distance="15"></a-light>
+
+      <!-- Background panel -->
+      <a-plane position="0 1.6 -3.5" width="4.2" height="3.2" color="#0a0a2a"
+               material="shader: flat; opacity: 0.85"></a-plane>
+
+      <!-- Title -->
+      <a-text value="SHOP" position="0 2.85 -3.4" align="center"
+              color="#ffd700" width="5"></a-text>
+
+      <!-- Balance display -->
+      <a-text id="shop-balance" value="Coins: 0" position="0 2.55 -3.4" align="center"
+              color="#00d4ff" width="3"></a-text>
+
+      <!-- Product cards container -->
+      <a-entity id="shop-cards" position="0 1.5 -3.4"></a-entity>
+
+      <!-- Back button -->
+      <a-plane id="btn-shop-back" class="clickable" position="0 0.25 -3.4"
+               width="1.2" height="0.35" color="#333355"
+               material="shader: flat; opacity: 0.9">
+        <a-text value="BACK TO MENU" align="center" color="#aaaacc" width="4"
+                position="0 0 0.01"></a-text>
+      </a-plane>
     </a-entity>
 
     <!-- ==================== GAME CONTENT (hidden until PLAY) ==================== -->

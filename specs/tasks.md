@@ -29,6 +29,87 @@ _None_
 
 ## Pending
 
+### TASK-124: In-Game VR Shop UI
+**Priority:** High
+**Status:** Pending
+**Assigned:** /dev
+**Dependencies:** None
+
+#### Description
+Add a Shop panel to the VR menu so players can browse and purchase IAP products (coin packs, premium unlock) without leaving the game. The shop is a VR panel within the SPA — toggling between menu-content and shop-content (same pattern as menu→game).
+
+#### Design
+
+**Shop Access:**
+- Add a "SHOP" button on the main menu (below PLAY button, at position `0 0.0 -3.4`)
+- Clicking SHOP hides `menu-content`, shows `shop-content`
+
+**Shop Layout (VR panels at z=-3.4):**
+```
+┌─────────────────────────────┐
+│         🛒 SHOP             │  ← Title
+│                             │
+│  ┌───────┐ ┌───────┐ ┌───────┐
+│  │ 100   │ │ 500   │ │Premium│  ← Product cards
+│  │ Coins │ │ Coins │ │Unlock │
+│  │ $0.99 │ │ $3.99 │ │ $4.99 │
+│  │ [BUY] │ │ [BUY] │ │ [BUY] │
+│  └───────┘ └───────┘ └───────┘
+│                             │
+│      [ ← BACK TO MENU ]    │  ← Back button
+│                             │
+│     Coins: 250  ⭐ Premium  │  ← Current balance
+└─────────────────────────────┘
+```
+
+**Each product card:** `a-plane` (0.9w × 1.0h) containing:
+- Product icon/emoji (`a-text`)
+- Product name (`a-text`)
+- Price (`a-text`) — use `iapManager.getDisplayPrice()`
+- BUY button (`a-plane.clickable`, green) — or "OWNED" (gray) for non_consumable already purchased
+
+**Purchase Flow:**
+1. Player clicks BUY → `iapManager.purchase(productId)`
+2. On Quest: opens Meta payment dialog
+3. On dev: instant grant
+4. On success: show toast "Purchased! +100 Coins" and update balance display
+5. On error: show toast "Purchase failed" (red)
+
+#### Implementation
+
+**Files to modify:**
+- `src/index.html` — Add `<a-entity id="shop-content" visible="false">` with shop panels
+- `src/js/main.js` — Add `switchToShop()`, `switchFromShop()`, build product cards, wire buy buttons
+- `src/js/iap/iap-manager.js` — No changes needed (already has `purchase()`, `getDisplayPrice()`, `isOwned()`)
+
+**In `src/index.html`:**
+- Add `shop-content` entity after `menu-content`, before `game-content`
+- Contains: back panel background, title text, product card containers, back button, balance text
+
+**In `src/js/main.js`:**
+- Import `iapManager` and `showToast`
+- `initShop()` — call `iapManager.init()`, build product cards dynamically
+- `buildShopCards()` — for each product in `iapManager.products`, create a card with name, price, buy/owned button
+- `switchToShop()` — hide menu-content, show shop-content, refresh cards (balance, owned state)
+- `switchFromShop()` — hide shop-content, show menu-content, update player-info coins
+- Wire SHOP button click → `switchToShop()`
+- Wire BACK button click → `switchFromShop()`
+- Wire BUY button click → `async purchase(productId)` with try/catch, toast feedback
+
+#### Acceptance Criteria
+- [ ] SHOP button visible on main menu
+- [ ] Shop shows 3 product cards with correct names and prices
+- [ ] BUY button triggers iapManager.purchase()
+- [ ] On Quest: Meta payment dialog opens
+- [ ] On dev: instant purchase with coin grant
+- [ ] Toast shows success/failure feedback
+- [ ] Premium shows "OWNED" if already purchased
+- [ ] Coins balance updates after purchase
+- [ ] BACK button returns to menu
+- [ ] VR controller click works on shop buttons (raycaster refresh)
+
+---
+
 ### TASK-116: Tutorial & Onboarding
 **Priority:** High
 **Status:** Completed

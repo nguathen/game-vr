@@ -22,6 +22,7 @@ let targetSystem;
 let timerInterval;
 let timeLeft;
 let _onReturnToMenu;
+let _initialized = false;
 
 // Expose weapon system to A-Frame components (non-module)
 window.__weaponSystem = weaponSystem;
@@ -30,10 +31,71 @@ export function startGame({ mode, weapon, theme, onReturnToMenu }) {
   if (mode) gameModeManager.select(mode);
   if (weapon) weaponSystem.select(weapon);
   _onReturnToMenu = onReturnToMenu;
-  init(theme);
+
+  if (!_initialized) {
+    _initOnce();
+    _initialized = true;
+  }
+  _initRound(theme);
 }
 
-function init(themeParam) {
+// DOM refs (set once)
+let _hudScore, _hudTimer, _hudCombo, _hudLives, _hudWeapon, _hudLevel;
+let _gameOverOverlay, _countdownOverlay, _countdownNumber, _scene, _btnQuit;
+
+function _initOnce() {
+  _hudScore = document.getElementById('hud-score');
+  _hudTimer = document.getElementById('hud-timer');
+  _hudCombo = document.getElementById('hud-combo');
+  _hudLives = document.getElementById('hud-lives');
+  _hudWeapon = document.getElementById('hud-weapon');
+  _hudLevel = document.getElementById('hud-level');
+  _gameOverOverlay = document.getElementById('game-over-overlay');
+  _countdownOverlay = document.getElementById('countdown-overlay');
+  _countdownNumber = document.getElementById('countdown-number');
+  _scene = document.getElementById('scene');
+  _btnQuit = document.getElementById('btn-quit');
+
+  // One-time event listeners
+  if (_btnQuit) {
+    _btnQuit.addEventListener('click', () => endGame());
+  }
+
+  document.getElementById('btn-retry').addEventListener('click', () => {
+    _gameOverOverlay.classList.add('hidden');
+    const m = gameModeManager.current;
+    targetSystem.configure({
+      spawnInterval: m.spawnInterval,
+      maxTargets: m.maxTargets,
+      targetLifetime: m.targetLifetime,
+      bossMode: m.id === 'bossRush',
+    });
+    gameModeManager.startRound();
+    _updateLivesDisplay();
+    _startCountdown();
+  });
+
+  document.getElementById('btn-menu').addEventListener('click', () => {
+    if (_onReturnToMenu) _onReturnToMenu();
+  });
+
+  // Track shots for accuracy (VR triggers and flat-screen clicks)
+  document.addEventListener('shot-fired', () => {
+    if (gameManager.state === GameState.PLAYING) {
+      scoreManager.recordShot();
+    }
+  });
+  _scene.addEventListener('click', () => {
+    if (gameManager.state === GameState.PLAYING) {
+      scoreManager.recordShot();
+    }
+  });
+
+  // Spawn ambient particles once
+  _spawnAmbientParticles(_scene);
+}
+
+function _initRound(themeParam) {
   const container = document.getElementById('target-container');
   const mode = gameModeManager.current;
 
@@ -44,60 +106,35 @@ function init(themeParam) {
     bossMode: mode.id === 'bossRush',
   });
 
-  const hudScore = document.getElementById('hud-score');
-  const hudTimer = document.getElementById('hud-timer');
-  const hudCombo = document.getElementById('hud-combo');
-  const hudLives = document.getElementById('hud-lives');
-  const hudWeapon = document.getElementById('hud-weapon');
-  const hudLevel = document.getElementById('hud-level');
-  const gameOverOverlay = document.getElementById('game-over-overlay');
-  const countdownOverlay = document.getElementById('countdown-overlay');
-  const countdownNumber = document.getElementById('countdown-number');
-
-  // Load audio settings
   audioManager.loadSettings();
 
-  // Apply theme (TASK-112)
-  const scene = document.getElementById('scene');
-  const selectedTheme = themeParam || authManager.profile?.selectedTheme || 'cyber';
-  applyTheme(scene, selectedTheme);
+  _selectedTheme = themeParam || authManager.profile?.selectedTheme || 'cyber';
+  applyTheme(_scene, _selectedTheme);
 
-  // Spawn ambient particles (TASK-111)
-  spawnAmbientParticles(scene);
-
-  // Apply settings (TASK-114)
   const settings = getSettings();
-  applyGameSettings(settings);
+  _applyGameSettings(settings);
+  _updateControllerLasers();
 
-  // Update weapon laser colors on controllers (with skin overrides)
-  updateControllerLasers();
-
-  // Show weapon in HUD
-  if (hudWeapon) {
-    hudWeapon.setAttribute('value', `${weaponSystem.current.icon} ${weaponSystem.current.name}`);
+  if (_hudWeapon) {
+    _hudWeapon.setAttribute('value', `${weaponSystem.current.icon} ${weaponSystem.current.name}`);
   }
-
-  // Show level in HUD
-  if (hudLevel) {
+  if (_hudLevel) {
     const profile = authManager.profile;
     if (profile) {
-      hudLevel.setAttribute('value', `Lv.${profile.level}`);
+      _hudLevel.setAttribute('value', `Lv.${profile.level}`);
     }
   }
 
-  // Show lives for survival mode
-  updateLivesDisplay();
+  _updateLivesDisplay();
 
-  // Score updates
   scoreManager.onChange(score => {
-    hudScore.setAttribute('value', `Score: ${score}`);
+    _hudScore.setAttribute('value', `Score: ${score}`);
   });
 
-  // Combo display
   targetSystem.onComboChange = (combo) => {
     if (combo >= 2) {
-      hudCombo.setAttribute('value', `x${combo} COMBO!`);
-      hudCombo.setAttribute('animation__pop', {
+      _hudCombo.setAttribute('value', `x${combo} COMBO!`);
+      _hudCombo.setAttribute('animation__pop', {
         property: 'scale',
         from: '0.4 0.4 0.4',
         to: '0.3 0.3 0.3',
@@ -105,331 +142,274 @@ function init(themeParam) {
         easing: 'easeOutElastic',
       });
     } else {
-      hudCombo.setAttribute('value', '');
+      _hudCombo.setAttribute('value', '');
     }
   };
 
-  // Miss handler for survival mode
   targetSystem.onMiss = () => {
     const currentMode = gameModeManager.current;
     if (currentMode.lives !== Infinity) {
       const dead = gameModeManager.loseLife();
       audioManager.playLifeLost();
-      updateLivesDisplay();
+      _updateLivesDisplay();
       if (dead) endGame();
     }
   };
 
-  // Quit button — always visible during gameplay, essential for Zen/Survival
-  const btnQuit = document.getElementById('btn-quit');
-  if (btnQuit) {
-    btnQuit.addEventListener('click', () => endGame());
+  _startCountdown();
+}
+
+function _updateLivesDisplay() {
+  if (!_hudLives) return;
+  const lives = gameModeManager.lives;
+  if (lives === Infinity) {
+    _hudLives.setAttribute('value', '');
+  } else {
+    _hudLives.setAttribute('value', '♥'.repeat(Math.max(0, lives)));
   }
+}
 
-  startCountdown();
+function _updateControllerLasers() {
+  const weapon = weaponSystem.current;
+  const profile = authManager.profile;
+  const skinId = profile?.weaponSkins?.[weapon.id] || 'default';
+  const overrides = getSkinOverrides(skinId, weapon);
+  const laserColor = overrides.laserColor || weapon.laserColor;
+  const laserOpacity = overrides.laserOpacity || weapon.laserOpacity;
 
-  document.getElementById('btn-retry').addEventListener('click', () => {
-    gameOverOverlay.classList.add('hidden');
-    // Reconfigure target system for current mode
-    const m = gameModeManager.current;
-    targetSystem.configure({
-      spawnInterval: m.spawnInterval,
-      maxTargets: m.maxTargets,
-      targetLifetime: m.targetLifetime,
-      bossMode: m.id === 'bossRush',
+  const rightHand = document.getElementById('right-hand');
+  const leftHand = document.getElementById('left-hand');
+  if (rightHand) {
+    rightHand.setAttribute('raycaster', 'lineColor', laserColor);
+    rightHand.setAttribute('raycaster', 'lineOpacity', laserOpacity);
+  }
+  if (leftHand) {
+    leftHand.setAttribute('raycaster', 'lineColor', laserColor);
+    leftHand.setAttribute('raycaster', 'lineOpacity', laserOpacity);
+  }
+}
+
+function _spawnAmbientParticles(sceneEl) {
+  for (let i = 0; i < 25; i++) {
+    const p = document.createElement('a-sphere');
+    const x = (Math.random() - 0.5) * 28;
+    const y = Math.random() * 4 + 0.5;
+    const z = (Math.random() - 0.5) * 28;
+    p.setAttribute('radius', String(0.02 + Math.random() * 0.03));
+    p.setAttribute('material', `shader: flat; color: #ffffff; opacity: ${0.1 + Math.random() * 0.15}`);
+    p.setAttribute('position', `${x} ${y} ${z}`);
+    p.setAttribute('animation', {
+      property: 'position',
+      to: `${x + (Math.random() - 0.5) * 2} ${y + 1 + Math.random()} ${z + (Math.random() - 0.5) * 2}`,
+      dur: 6000 + Math.random() * 4000,
+      easing: 'linear', loop: true, dir: 'alternate',
     });
-    gameModeManager.startRound();
-    updateLivesDisplay();
-    startCountdown();
-  });
+    sceneEl.appendChild(p);
+  }
+}
 
-  document.getElementById('btn-menu').addEventListener('click', () => {
-    if (_onReturnToMenu) _onReturnToMenu();
-  });
+function _applyGameSettings(settings) {
+  const crosshair = document.getElementById('crosshair');
+  if (crosshair) {
+    crosshair.setAttribute('material', `shader: flat; color: ${settings.crosshairColor}; opacity: 0.8`);
+    crosshair.setAttribute('color', settings.crosshairColor);
+    const sizes = { small: { inner: 0.007, outer: 0.01 }, medium: { inner: 0.01, outer: 0.015 }, large: { inner: 0.015, outer: 0.022 } };
+    const s = sizes[settings.crosshairSize] || sizes.medium;
+    crosshair.setAttribute('radius-inner', String(s.inner));
+    crosshair.setAttribute('radius-outer', String(s.outer));
+  }
 
-  function updateLivesDisplay() {
-    if (!hudLives) return;
-    const lives = gameModeManager.lives;
-    if (lives === Infinity) {
-      hudLives.setAttribute('value', '');
+  if (!settings.showCombo && _hudCombo) {
+    _hudCombo.setAttribute('visible', 'false');
+  }
+}
+
+function _startCountdown() {
+  _countdownOverlay.classList.remove('hidden');
+  let count = COUNTDOWN_FROM;
+  _countdownNumber.textContent = count;
+
+  const countInterval = setInterval(() => {
+    count--;
+    if (count > 0) {
+      _countdownNumber.textContent = count;
+      audioManager.playCountdownBeep();
     } else {
-      hudLives.setAttribute('value', '♥'.repeat(Math.max(0, lives)));
+      _countdownNumber.textContent = 'GO!';
+      audioManager.playGo();
+      clearInterval(countInterval);
+      setTimeout(() => {
+        _countdownOverlay.classList.add('hidden');
+        startRound();
+      }, 500);
     }
+  }, 1000);
+}
+
+let _selectedTheme = 'cyber';
+
+function startRound() {
+  scoreManager.reset();
+  const currentMode = gameModeManager.current;
+  timeLeft = currentMode.duration;
+  gameModeManager.startRound();
+  gameManager.changeState(GameState.PLAYING);
+  if (_btnQuit) _btnQuit.classList.remove('hidden');
+  targetSystem.start();
+
+  musicManager.loadSettings();
+  musicManager.startMusic(_selectedTheme);
+
+  _hudScore.setAttribute('value', 'Score: 0');
+  _hudCombo.setAttribute('value', '');
+
+  if (timeLeft === Infinity) {
+    _hudTimer.setAttribute('value', '∞');
+    _hudTimer.setAttribute('color', '#44ff44');
+  } else {
+    _hudTimer.setAttribute('value', String(timeLeft));
+    _hudTimer.setAttribute('color', '#ffaa00');
   }
 
-  function updateControllerLasers() {
-    const weapon = weaponSystem.current;
-    const profile = authManager.profile;
-    const skinId = profile?.weaponSkins?.[weapon.id] || 'default';
-    const overrides = getSkinOverrides(skinId, weapon);
-    const laserColor = overrides.laserColor || weapon.laserColor;
-    const laserOpacity = overrides.laserOpacity || weapon.laserOpacity;
+  _updateLivesDisplay();
 
-    const rightHand = document.getElementById('right-hand');
-    const leftHand = document.getElementById('left-hand');
-    if (rightHand) {
-      rightHand.setAttribute('raycaster', 'lineColor', laserColor);
-      rightHand.setAttribute('raycaster', 'lineOpacity', laserOpacity);
-    }
-    if (leftHand) {
-      leftHand.setAttribute('raycaster', 'lineColor', laserColor);
-      leftHand.setAttribute('raycaster', 'lineOpacity', laserOpacity);
-    }
-  }
+  if (timerInterval) clearInterval(timerInterval);
+  if (timeLeft !== Infinity) {
+    timerInterval = setInterval(() => {
+      timeLeft--;
+      _hudTimer.setAttribute('value', String(timeLeft));
 
-  function spawnAmbientParticles(sceneEl) {
-    for (let i = 0; i < 25; i++) {
-      const p = document.createElement('a-sphere');
-      const x = (Math.random() - 0.5) * 28;
-      const y = Math.random() * 4 + 0.5;
-      const z = (Math.random() - 0.5) * 28;
-      p.setAttribute('radius', String(0.02 + Math.random() * 0.03));
-      p.setAttribute('material', `shader: flat; color: #ffffff; opacity: ${0.1 + Math.random() * 0.15}`);
-      p.setAttribute('position', `${x} ${y} ${z}`);
-      p.setAttribute('animation', {
-        property: 'position',
-        to: `${x + (Math.random() - 0.5) * 2} ${y + 1 + Math.random()} ${z + (Math.random() - 0.5) * 2}`,
-        dur: 6000 + Math.random() * 4000,
-        easing: 'linear', loop: true, dir: 'alternate',
-      });
-      sceneEl.appendChild(p);
-    }
-  }
-
-  function applyGameSettings(settings) {
-    // Crosshair
-    const crosshair = document.getElementById('crosshair');
-    if (crosshair) {
-      crosshair.setAttribute('material', `shader: flat; color: ${settings.crosshairColor}; opacity: 0.8`);
-      crosshair.setAttribute('color', settings.crosshairColor);
-      const sizes = { small: { inner: 0.007, outer: 0.01 }, medium: { inner: 0.01, outer: 0.015 }, large: { inner: 0.015, outer: 0.022 } };
-      const s = sizes[settings.crosshairSize] || sizes.medium;
-      crosshair.setAttribute('radius-inner', String(s.inner));
-      crosshair.setAttribute('radius-outer', String(s.outer));
-    }
-
-    // Combo counter visibility
-    if (!settings.showCombo && hudCombo) {
-      hudCombo.setAttribute('visible', 'false');
-    }
-  }
-
-  function startCountdown() {
-    countdownOverlay.classList.remove('hidden');
-    let count = COUNTDOWN_FROM;
-    countdownNumber.textContent = count;
-
-    const countInterval = setInterval(() => {
-      count--;
-      if (count > 0) {
-        countdownNumber.textContent = count;
-        audioManager.playCountdownBeep();
+      if (timeLeft <= 10) {
+        _hudTimer.setAttribute('color', '#ff4444');
       } else {
-        countdownNumber.textContent = 'GO!';
-        audioManager.playGo();
-        clearInterval(countInterval);
-        setTimeout(() => {
-          countdownOverlay.classList.add('hidden');
-          startRound();
-        }, 500);
+        _hudTimer.setAttribute('color', '#ffaa00');
+      }
+
+      if (timeLeft <= 0) {
+        endGame();
       }
     }, 1000);
   }
+}
 
-  // Track shots for accuracy (VR triggers and flat-screen clicks)
-  document.addEventListener('shot-fired', () => {
-    if (gameManager.state === GameState.PLAYING) {
-      scoreManager.recordShot();
-    }
+async function endGame() {
+  if (timerInterval) clearInterval(timerInterval);
+  if (_btnQuit) _btnQuit.classList.add('hidden');
+  gameManager.changeState(GameState.GAME_OVER);
+  targetSystem.stop();
+  musicManager.stopMusic();
+  audioManager.playGameOver();
+
+  const result = scoreManager.finalize();
+  const currentMode = gameModeManager.current;
+
+  const summary = buildSummary(result, authManager.profile, currentMode, targetSystem);
+  const xpEarned = summary.xpEarned;
+
+  const isNewHigh = await authManager.updateHighScore(currentMode.id, result.score);
+  const levelResult = await authManager.addXp(xpEarned);
+  await authManager.recordGameResult({
+    targetsHit: targetSystem.targetsHit,
+    bestCombo: targetSystem.bestCombo,
   });
-  scene.addEventListener('click', () => {
-    if (gameManager.state === GameState.PLAYING) {
-      scoreManager.recordShot();
-    }
-  });
 
-  function startRound() {
-    scoreManager.reset();
-    const currentMode = gameModeManager.current;
-    timeLeft = currentMode.duration;
-    gameModeManager.startRound();
-    gameManager.changeState(GameState.PLAYING);
-    if (btnQuit) btnQuit.classList.remove('hidden');
-    targetSystem.start();
+  const profile = authManager.profile;
+  const weaponId = weaponSystem.currentId;
+  const wu = { ...(profile.weaponUsage || {}) };
+  wu[weaponId] = (wu[weaponId] || 0) + 1;
+  const ms = { ...(profile.modeStats || {}) };
+  if (!ms[currentMode.id]) ms[currentMode.id] = { games: 0 };
+  ms[currentMode.id].games++;
+  const recent = [...(profile.recentGames || [])];
+  recent.push({ mode: currentMode.id, weapon: weaponId, score: result.score, targets: targetSystem.targetsHit, date: Date.now() });
+  if (recent.length > 10) recent.shift();
+  await authManager.saveProfile({ weaponUsage: wu, modeStats: ms, recentGames: recent });
 
-    // Start music
-    musicManager.loadSettings();
-    musicManager.startMusic(selectedTheme);
-
-    hudScore.setAttribute('value', 'Score: 0');
-    hudCombo.setAttribute('value', '');
-
-    // Timer display
-    if (timeLeft === Infinity) {
-      hudTimer.setAttribute('value', '∞');
-      hudTimer.setAttribute('color', '#44ff44');
-    } else {
-      hudTimer.setAttribute('value', String(timeLeft));
-      hudTimer.setAttribute('color', '#ffaa00');
-    }
-
-    updateLivesDisplay();
-
-    if (timerInterval) clearInterval(timerInterval);
-    if (timeLeft !== Infinity) {
-      timerInterval = setInterval(() => {
-        timeLeft--;
-        hudTimer.setAttribute('value', String(timeLeft));
-
-        if (timeLeft <= 10) {
-          hudTimer.setAttribute('color', '#ff4444');
-        } else {
-          hudTimer.setAttribute('color', '#ffaa00');
-        }
-
-        if (timeLeft <= 0) {
-          endGame();
-        }
-      }, 1000);
-    }
+  if (isNewHigh) {
+    leaderboardManager.submitScore(currentMode.id, result.score).catch(() => {});
   }
 
-  async function endGame() {
-    if (timerInterval) clearInterval(timerInterval);
-    if (btnQuit) btnQuit.classList.add('hidden');
-    gameManager.changeState(GameState.GAME_OVER);
-    targetSystem.stop();
-    musicManager.stopMusic();
-    audioManager.playGameOver();
+  const challengeResult = await checkProgress({
+    score: result.score,
+    targetsHit: targetSystem.targetsHit,
+    bestCombo: targetSystem.bestCombo,
+    mode: currentMode.id,
+    weapon: weaponId,
+  });
 
-    const result = scoreManager.finalize();
-    const currentMode = gameModeManager.current;
+  const newAchievements = await checkAchievements();
 
-    // Build game summary (TASK-119)
-    const summary = buildSummary(result, authManager.profile, currentMode, targetSystem);
-
-    // XP calculation
-    const xpEarned = summary.xpEarned;
-
-    // Update profile
-    const isNewHigh = await authManager.updateHighScore(currentMode.id, result.score);
-    const levelResult = await authManager.addXp(xpEarned);
-    await authManager.recordGameResult({
-      targetsHit: targetSystem.targetsHit,
-      bestCombo: targetSystem.bestCombo,
-    });
-
-    // Track weapon and mode usage (TASK-110)
-    const profile = authManager.profile;
-    const weaponId = weaponSystem.currentId;
-    const wu = { ...(profile.weaponUsage || {}) };
-    wu[weaponId] = (wu[weaponId] || 0) + 1;
-    const ms = { ...(profile.modeStats || {}) };
-    if (!ms[currentMode.id]) ms[currentMode.id] = { games: 0 };
-    ms[currentMode.id].games++;
-    const recent = [...(profile.recentGames || [])];
-    recent.push({ mode: currentMode.id, weapon: weaponId, score: result.score, targets: targetSystem.targetsHit, date: Date.now() });
-    if (recent.length > 10) recent.shift();
-    await authManager.saveProfile({ weaponUsage: wu, modeStats: ms, recentGames: recent });
-
-    // Leaderboard (TASK-106)
-    if (isNewHigh) {
-      leaderboardManager.submitScore(currentMode.id, result.score).catch(() => {});
+  const scoreEl = document.getElementById('final-score');
+  scoreEl.textContent = 'Score: 0';
+  countUp(scoreEl, 0, result.score, 800);
+  const scoreObserver = new MutationObserver(() => {
+    if (!scoreEl.textContent.startsWith('Score:')) {
+      scoreEl.textContent = `Score: ${scoreEl.textContent}`;
     }
+  });
+  scoreObserver.observe(scoreEl, { childList: true, characterData: true, subtree: true });
+  setTimeout(() => {
+    scoreObserver.disconnect();
+    scoreEl.textContent = `Score: ${result.score.toLocaleString()}`;
+  }, 900);
 
-    // Daily challenge (TASK-107)
-    const challengeResult = await checkProgress({
-      score: result.score,
-      targetsHit: targetSystem.targetsHit,
-      bestCombo: targetSystem.bestCombo,
-      mode: currentMode.id,
-      weapon: weaponId,
-    });
+  const highScoreEl = document.getElementById('final-high-score');
+  if (isNewHigh) {
+    highScoreEl.textContent = 'New High Score!';
+    highScoreEl.style.color = '#ffd700';
+  } else {
+    const hs = authManager.profile?.highScores?.[currentMode.id] || 0;
+    const diff = result.score - hs;
+    highScoreEl.textContent = diff >= 0 ? `High Score: ${hs}` : `High Score: ${hs} (${diff})`;
+    highScoreEl.style.color = '#888';
+  }
 
-    // Achievements (TASK-108)
-    const newAchievements = await checkAchievements();
-
-    // Display results with count-up animation (TASK-120)
-    const scoreEl = document.getElementById('final-score');
-    scoreEl.textContent = 'Score: 0';
-    countUp(scoreEl, 0, result.score, 800);
-    // Prefix the counter text
-    const origCountUp = scoreEl.textContent;
-    const scoreObserver = new MutationObserver(() => {
-      if (!scoreEl.textContent.startsWith('Score:')) {
-        scoreEl.textContent = `Score: ${scoreEl.textContent}`;
-      }
-    });
-    scoreObserver.observe(scoreEl, { childList: true, characterData: true, subtree: true });
-    setTimeout(() => {
-      scoreObserver.disconnect();
-      scoreEl.textContent = `Score: ${result.score.toLocaleString()}`;
-    }, 900);
-
-    const highScoreEl = document.getElementById('final-high-score');
-    if (isNewHigh) {
-      highScoreEl.textContent = 'New High Score!';
-      highScoreEl.style.color = '#ffd700';
-    } else {
-      const hs = authManager.profile?.highScores?.[currentMode.id] || 0;
-      const diff = result.score - hs;
-      highScoreEl.textContent = diff >= 0 ? `High Score: ${hs}` : `High Score: ${hs} (${diff})`;
-      highScoreEl.style.color = '#888';
-    }
-
-    // XP display
-    const xpEl = document.getElementById('final-xp');
-    if (xpEl) {
-      xpEl.textContent = `+${xpEarned} XP`;
-      if (levelResult.leveledUp) {
-        xpEl.textContent += ` — LEVEL UP! Lv.${levelResult.newLevel}`;
-        xpEl.style.color = '#ffd700';
-        audioManager.playLevelUp();
-      } else {
-        xpEl.style.color = '#00d4ff';
-      }
-    }
-
-    // Enhanced stats display (TASK-119)
-    const statsEl = document.getElementById('final-stats');
-    if (statsEl) {
-      statsEl.textContent = `Targets: ${targetSystem.targetsHit} | Combo: x${targetSystem.bestCombo} | Accuracy: ${summary.accuracy}%`;
-    }
-
-    // Daily challenge notification (TASK-120 toast)
-    if (challengeResult.justCompleted) {
-      showToast(`Challenge Complete! +${challengeResult.challenge.rewardXp} XP +${challengeResult.challenge.rewardCoins} Coins`, 'success');
-    }
-
-    // Achievement notifications via toast (TASK-120)
-    newAchievements.forEach((ach, i) => {
-      setTimeout(() => showToast(`${ach.icon} ${ach.name} unlocked! +${ach.rewardXp} XP`, 'achievement'), 500 + i * 800);
-    });
-
-    // Level up toast
+  const xpEl = document.getElementById('final-xp');
+  if (xpEl) {
+    xpEl.textContent = `+${xpEarned} XP`;
     if (levelResult.leveledUp) {
-      showToast(`Level Up! You are now Lv.${levelResult.newLevel}`, 'achievement');
+      xpEl.textContent += ` — LEVEL UP! Lv.${levelResult.newLevel}`;
+      xpEl.style.color = '#ffd700';
+      audioManager.playLevelUp();
+    } else {
+      xpEl.style.color = '#00d4ff';
     }
-
-    // Wire share button (TASK-119)
-    let shareBtn = document.getElementById('btn-share');
-    if (!shareBtn) {
-      shareBtn = document.createElement('button');
-      shareBtn.id = 'btn-share';
-      shareBtn.className = 'btn btn-secondary';
-      shareBtn.textContent = 'Share';
-      const btnRow = gameOverOverlay.querySelector('.buttons');
-      if (btnRow) btnRow.appendChild(shareBtn);
-    }
-    shareBtn.onclick = async () => {
-      summary.isNewHigh = isNewHigh;
-      const text = formatShareText(summary);
-      const ok = await copyToClipboard(text);
-      showToast(ok ? 'Copied to clipboard!' : 'Could not copy', ok ? 'success' : 'error');
-    };
-
-    gameOverOverlay.classList.remove('hidden');
   }
+
+  const statsEl = document.getElementById('final-stats');
+  if (statsEl) {
+    statsEl.textContent = `Targets: ${targetSystem.targetsHit} | Combo: x${targetSystem.bestCombo} | Accuracy: ${summary.accuracy}%`;
+  }
+
+  if (challengeResult.justCompleted) {
+    showToast(`Challenge Complete! +${challengeResult.challenge.rewardXp} XP +${challengeResult.challenge.rewardCoins} Coins`, 'success');
+  }
+
+  newAchievements.forEach((ach, i) => {
+    setTimeout(() => showToast(`${ach.icon} ${ach.name} unlocked! +${ach.rewardXp} XP`, 'achievement'), 500 + i * 800);
+  });
+
+  if (levelResult.leveledUp) {
+    showToast(`Level Up! You are now Lv.${levelResult.newLevel}`, 'achievement');
+  }
+
+  let shareBtn = document.getElementById('btn-share');
+  if (!shareBtn) {
+    shareBtn = document.createElement('button');
+    shareBtn.id = 'btn-share';
+    shareBtn.className = 'btn btn-secondary';
+    shareBtn.textContent = 'Share';
+    const btnRow = _gameOverOverlay.querySelector('.buttons');
+    if (btnRow) btnRow.appendChild(shareBtn);
+  }
+  shareBtn.onclick = async () => {
+    summary.isNewHigh = isNewHigh;
+    const text = formatShareText(summary);
+    const ok = await copyToClipboard(text);
+    showToast(ok ? 'Copied to clipboard!' : 'Could not copy', ok ? 'success' : 'error');
+  };
+
+  _gameOverOverlay.classList.remove('hidden');
 }
 
 // SPA: game is started via startGame() exported above, called from main.js
