@@ -14,6 +14,7 @@ import { getSettings } from './game/settings-util.js';
 import musicManager from './core/music-manager.js';
 import { buildSummary } from './game/game-summary.js';
 import powerUpManager from './game/power-up-manager.js';
+import hapticManager from './core/haptic-manager.js';
 
 const COUNTDOWN_FROM = 3;
 
@@ -23,8 +24,9 @@ let timeLeft;
 let _onReturnToMenu;
 let _initialized = false;
 
-// Expose weapon system to A-Frame components (non-module)
+// Expose systems to A-Frame components (non-module)
 window.__weaponSystem = weaponSystem;
+window.__hapticManager = hapticManager;
 
 export function startGame({ mode, weapon, theme, onReturnToMenu }) {
   if (mode) gameModeManager.select(mode);
@@ -99,6 +101,54 @@ function _initOnce() {
     } else {
       _hideSlowMoOverlay();
       musicManager.setPlaybackRate(1.0);
+    }
+  });
+
+  // Boss mode HUD handlers
+  const hudBoss = document.getElementById('hud-boss');
+  const bossBarFill = document.getElementById('boss-bar-fill');
+  const bossBarLabel = document.getElementById('boss-bar-label');
+
+  document.addEventListener('boss-spawn', (e) => {
+    if (!hudBoss) return;
+    hudBoss.setAttribute('visible', 'true');
+    if (bossBarFill) {
+      bossBarFill.setAttribute('width', '0.5');
+      bossBarFill.setAttribute('color', '#44ff44');
+    }
+    if (bossBarLabel) {
+      const w = e.detail.wave;
+      bossBarLabel.setAttribute('value', w > 0 && w % 5 === 0 ? `BOSS WAVE ${w}!` : `WAVE ${w + 1}`);
+    }
+  });
+
+  document.addEventListener('boss-damaged', (e) => {
+    if (!hudBoss || !bossBarFill) return;
+    const { hp, maxHp } = e.detail;
+    const pct = hp / maxHp;
+    bossBarFill.setAttribute('width', String(0.5 * pct));
+    // Color transition by HP %
+    if (pct > 0.5)      bossBarFill.setAttribute('color', '#44ff44');
+    else if (pct > 0.25) bossBarFill.setAttribute('color', '#ffaa00');
+    else                  bossBarFill.setAttribute('color', '#ff3333');
+    audioManager.playBossHit();
+  });
+
+  document.addEventListener('boss-killed', () => {
+    if (!hudBoss) return;
+    setTimeout(() => hudBoss.setAttribute('visible', 'false'), 500);
+  });
+
+  document.addEventListener('boss-wave-clear', (e) => {
+    // Show wave clear announcement via combo HUD
+    if (_hudCombo) {
+      _hudCombo.setAttribute('value', `WAVE ${e.detail.wave} CLEAR!`);
+      _hudCombo.setAttribute('color', '#ffd700');
+      _hudCombo.setAttribute('animation__pop', {
+        property: 'scale', from: '0.6 0.6 0.6', to: '0.4 0.4 0.4',
+        dur: 300, easing: 'easeOutElastic',
+      });
+      setTimeout(() => _hudCombo.setAttribute('value', ''), 2000);
     }
   });
 }
@@ -207,6 +257,7 @@ function _initRound(themeParam) {
     if (currentMode.lives !== Infinity) {
       const dead = gameModeManager.loseLife();
       audioManager.playLifeLost();
+      hapticManager.damageTaken();
       _updateLivesDisplay();
       // Shake lives display
       if (_hudLives) {
@@ -311,6 +362,7 @@ function _startCountdown() {
         });
       }
       audioManager.playCountdownBeep();
+      hapticManager.pulse(0.2, 30);
     } else {
       if (hudCountdown) {
         hudCountdown.setAttribute('value', 'GO!');
@@ -464,7 +516,7 @@ async function endGame() {
     hudGameover.setAttribute('visible', 'true');
 
     // Hide HUD elements during game over display
-    ['hud-score', 'hud-timer', 'hud-combo', 'hud-lives', 'hud-weapon', 'hud-level', 'hud-powerup'].forEach(id => {
+    ['hud-score', 'hud-timer', 'hud-combo', 'hud-lives', 'hud-weapon', 'hud-level', 'hud-powerup', 'hud-boss'].forEach(id => {
       const el = document.getElementById(id);
       if (el) el.setAttribute('visible', 'false');
     });

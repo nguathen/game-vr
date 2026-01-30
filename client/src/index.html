@@ -47,6 +47,16 @@
                 scale="0.2 0.2 0.2" color="#ffd700" font="mozillavr" align="left" visible="false"></a-text>
         <a-cursor id="game-cursor" color="#00ff88" fuse="false" raycaster="objects: .target; far: 100" visible="false"></a-cursor>
 
+        <!-- Boss Health Bar HUD -->
+        <a-entity id="hud-boss" visible="false" position="0 -0.25 -1">
+          <a-plane id="boss-bar-bg" width="0.5" height="0.03" color="#330000"
+                   material="shader: flat; opacity: 0.7"></a-plane>
+          <a-plane id="boss-bar-fill" width="0.5" height="0.025" color="#ff3333"
+                   material="shader: flat" position="0 0 0.001"></a-plane>
+          <a-text id="boss-bar-label" value="BOSS" position="0 0.03 0"
+                  scale="0.15 0.15 0.15" color="#ff6666" font="mozillavr" align="center"></a-text>
+        </a-entity>
+
         <!-- 3D Countdown HUD (center, visible during countdown) -->
         <a-text id="hud-countdown" value="" position="0 0.05 -1"
                 scale="0.8 0.8 0.8" color="#00ff88" font="mozillavr" align="center" visible="false"></a-text>

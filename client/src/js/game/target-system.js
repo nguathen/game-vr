@@ -48,6 +48,14 @@ class TargetSystem {
     this._coinsEarned = 0;
     this._slowMoActive = false;
     this._slowMoTimeout = null;
+
+    // Boss mode tracking
+    this._bossWave = 0;
+    this._bossWaveKills = 0;
+    this._bossSpawnPaused = false;
+    this._currentBoss = null;
+    this._currentBossHp = 0;
+    this._currentBossMaxHp = 0;
   }
 
   set onComboChange(fn) { this._onComboChange = fn; }
@@ -73,6 +81,10 @@ class TargetSystem {
     this._bestCombo = 0;
     this._coinsEarned = 0;
     this._wave = 0;
+    this._bossWave = 0;
+    this._bossWaveKills = 0;
+    this._bossSpawnPaused = false;
+    this._currentBoss = null;
     this._clearAll();
     this._spawnTimer = setInterval(() => this._trySpawn(), this._spawnInterval);
     for (let i = 0; i < 3; i++) this._spawnTarget();
@@ -93,7 +105,7 @@ class TargetSystem {
   }
 
   _trySpawn() {
-    if (!this._running || this._targets.size >= this._maxTargets) return;
+    if (!this._running || this._bossSpawnPaused || this._targets.size >= this._maxTargets) return;
     this._spawnTarget();
   }
 
@@ -139,6 +151,35 @@ class TargetSystem {
 
     const hp = this._bossMode ? type.hp + Math.floor(this._wave / 3) : type.hp;
     el.setAttribute('target-hit', `hp: ${hp}; targetType: ${typeId}`);
+
+    // Boss mode: scale, color tiers, glow
+    if (this._bossMode) {
+      const scale = Math.min(1.0 + this._bossWave * 0.05, 2.0);
+      el.setAttribute('scale', `${scale} ${scale} ${scale}`);
+
+      // Color tiers by wave
+      let bossColor = '#ff3333';
+      let bossEmissive = '#ff1111';
+      if (this._bossWave >= 16)     { bossColor = '#ffd700'; bossEmissive = '#ffaa00'; }
+      else if (this._bossWave >= 11) { bossColor = '#aa00ff'; bossEmissive = '#7700cc'; }
+      else if (this._bossWave >= 6)  { bossColor = '#ff6600'; bossEmissive = '#cc4400'; }
+      el.setAttribute('material', `color: ${bossColor}; metalness: 0.9; roughness: 0.1; emissive: ${bossEmissive}; emissiveIntensity: 0.6`);
+
+      // Pulsing glow
+      el.setAttribute('animation__glow', {
+        property: 'material.emissiveIntensity', from: 0.3, to: 0.8,
+        dur: 800, loop: true, dir: 'alternate', easing: 'easeInOutSine',
+      });
+
+      // Track as current boss
+      this._currentBoss = el;
+      this._currentBossHp = hp;
+      this._currentBossMaxHp = hp;
+      audioManager.playBossSpawn();
+      document.dispatchEvent(new CustomEvent('boss-spawn', {
+        detail: { hp, maxHp: hp, wave: this._bossWave },
+      }));
+    }
 
     const x = this._rand(-ARENA.x, ARENA.x);
     const y = this._rand(ARENA.yMin, ARENA.yMax);
@@ -238,7 +279,11 @@ class TargetSystem {
       this._onComboChange?.(this._combo);
 
       audioManager.playHit();
-      if (this._combo >= 2) audioManager.playCombo(this._combo);
+      window.__hapticManager?.hit();
+      if (this._combo >= 2) {
+        audioManager.playCombo(this._combo);
+        window.__hapticManager?.combo(this._combo);
+      }
 
       // Slow-motion at combo 10+
       if (this._combo >= 10) {
@@ -249,6 +294,7 @@ class TargetSystem {
       if (el._targetType === 'powerup') {
         const pu = powerUpManager.activateRandom();
         this._spawnDamageNumber(pos, 0, pu.config.color, pu.config.label);
+        window.__hapticManager?.powerUp();
       }
 
       // Damage number
@@ -264,6 +310,30 @@ class TargetSystem {
         const profile = authManager.profile;
         if (profile) {
           authManager.saveProfile({ coins: (profile.coins || 0) + el._targetCoins });
+        }
+      }
+
+      // Boss mode: track kills, wave clears, boss events
+      if (this._bossMode) {
+        if (el === this._currentBoss) {
+          audioManager.playBossKill();
+          window.__hapticManager?.bossKill();
+          this._currentBoss = null;
+          document.dispatchEvent(new CustomEvent('boss-killed'));
+        }
+
+        this._bossWaveKills++;
+        if (this._bossWaveKills >= 5) {
+          this._bossWaveKills = 0;
+          this._bossWave++;
+          audioManager.playWaveClear();
+          document.dispatchEvent(new CustomEvent('boss-wave-clear', {
+            detail: { wave: this._bossWave },
+          }));
+
+          // Dramatic pause between waves
+          this._bossSpawnPaused = true;
+          setTimeout(() => { this._bossSpawnPaused = false; }, 1500);
         }
       }
     }
@@ -290,6 +360,7 @@ class TargetSystem {
     });
 
     audioManager.playSlowMoHit();
+    window.__hapticManager?.slowMo();
     document.dispatchEvent(new CustomEvent('slow-motion', { detail: { active: true } }));
 
     // Restore after 300ms

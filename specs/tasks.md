@@ -11,7 +11,7 @@
 | Status | Count |
 |--------|-------|
 | In Progress | 0 |
-| Pending | 1 |
+| Pending | 3 |
 | Completed | 37 |
 
 > Note: V1 tasks (TASK-010~020) completed. V2 Phase 1 (TASK-101~105) completed + all 6 issues resolved.
@@ -29,6 +29,194 @@ _None_
 ---
 
 ## Pending
+
+### TASK-135: Haptic Feedback System — Hit/Combo/Power-Up Vibrations
+**Priority:** High
+**Status:** Completed ✅ (2026-01-30)
+**Assigned:** /dev
+**Dependencies:** None
+
+#### Description
+Expand haptic feedback beyond weapon fire. Currently only `shoot-controls.js` pulses on trigger. Add context-aware vibrations for target hits, combo milestones, power-up activations, slow-mo, damage taken (survival), and boss kills. Use the vibration settings slider (already exists: `settings.vibration` 0-100).
+
+#### Current State
+- `shoot-controls.js:64-72`: Fires haptic on weapon trigger via `gamepad.hapticActuators[0].pulse(intensity, duration)`
+- `settings-main.js`: Has `vibration: 50` slider (0-100), saved to profile
+- Controllers: `oculus-touch-controls` or `tracked-controls` on `#left-hand` / `#right-hand`
+
+#### Implementation
+
+**New file: `client/src/js/core/haptic-manager.js`**
+```js
+import { getSettings } from '../game/settings-util.js';
+
+class HapticManager {
+  pulse(intensity, duration) {
+    const settings = getSettings();
+    const scale = (settings.vibration ?? 50) / 100;
+    if (scale === 0) return;
+
+    const scaledIntensity = Math.min(intensity * scale, 1.0);
+    ['left-hand', 'right-hand'].forEach(id => {
+      const el = document.getElementById(id);
+      const tracked = el?.components?.['oculus-touch-controls']
+        || el?.components?.['tracked-controls'];
+      if (tracked?.controller?.gamepad?.hapticActuators?.[0]) {
+        try {
+          tracked.controller.gamepad.hapticActuators[0].pulse(scaledIntensity, duration);
+        } catch { /* ignore */ }
+      }
+    });
+  }
+
+  // Presets
+  hit()        { this.pulse(0.4, 40); }
+  combo(n)     { this.pulse(Math.min(0.3 + n * 0.05, 1.0), 60); }
+  powerUp()    { this._pattern([0.5, 80], [0.0, 50], [0.7, 80]); }
+  slowMo()     { this.pulse(0.8, 200); }
+  damageTaken(){ this._pattern([1.0, 100], [0.0, 50], [1.0, 100]); }
+  bossKill()   { this._pattern([0.6, 60], [0.0, 40], [0.8, 80], [0.0, 40], [1.0, 120]); }
+
+  async _pattern(...steps) {
+    for (const [intensity, duration] of steps) {
+      if (intensity > 0) this.pulse(intensity, duration);
+      await new Promise(r => setTimeout(r, duration));
+    }
+  }
+}
+
+const hapticManager = new HapticManager();
+export default hapticManager;
+```
+
+**Integration points:**
+
+1. **`shoot-controls.js`** — Replace inline haptic code (lines 64-73) with:
+   ```js
+   import hapticManager from '../core/haptic-manager.js';
+   // In _onTrigger(): remove old haptic block, add:
+   hapticManager.pulse(weapon?.hapticIntensity || 0.3, weapon?.hapticDuration || 50);
+   ```
+   **Note:** shoot-controls is a non-module A-Frame component. Use `window.__hapticManager` pattern (same as weaponSystem).
+
+2. **`target-system.js` → `_onTargetHit()`:**
+   - After `audioManager.playHit()`: `window.__hapticManager?.hit()`
+   - After combo check: `window.__hapticManager?.combo(this._combo)`
+   - On power-up activate: `window.__hapticManager?.powerUp()`
+
+3. **`target-system.js` → `_triggerSlowMotion()`:**
+   - After `audioManager.playSlowMoHit()`: `window.__hapticManager?.slowMo()`
+
+4. **`game-main.js`:**
+   - Import hapticManager, set `window.__hapticManager = hapticManager`
+   - On life lost (survival mode miss handler): `hapticManager.damageTaken()`
+   - On boss kill (wave milestone in bossRush): detect via `_wave % 5 === 0` in target-system, dispatch `boss-wave-clear` event, hapticManager.bossKill()
+
+5. **`game-main.js` → countdown:**
+   - On each countdown tick (3, 2, 1): `hapticManager.pulse(0.2, 30)` — subtle tick
+
+#### Acceptance Criteria
+- [ ] HapticManager singleton with centralized vibration control
+- [ ] Vibration scaled by settings.vibration slider (0 = off, 100 = full)
+- [ ] Hit vibration on every target hit
+- [ ] Combo vibration escalates with combo count
+- [ ] Power-up activation: double-pulse pattern
+- [ ] Slow-mo: long heavy pulse
+- [ ] Damage taken (survival miss): strong double-pulse
+- [ ] Boss wave clear: celebration pattern
+- [ ] Countdown ticks: subtle pulse
+- [ ] Weapon fire haptic still works (migrated to HapticManager)
+- [ ] No vibration when slider = 0
+- [ ] Works on Quest 2 controllers
+
+---
+
+### TASK-136: Boss Rush Polish — Health Bar, Phases, Visual Upgrades
+**Priority:** High
+**Status:** Completed ✅ (2026-01-30)
+**Assigned:** /dev
+**Dependencies:** None
+
+#### Description
+Boss Rush mode currently just spawns heavy targets with scaling HP. Make it feel like actual boss fights with visible health bars, wave announcements, boss size scaling, unique visual effects, and phase transitions.
+
+#### Current State
+- `game-modes.js`: bossRush mode — `lives: 5, spawnInterval: 3000, maxTargets: 4`
+- `target-system.js`: `_bossMode` flag → `_pickTargetType()` always returns `'heavy'`
+- HP scaling: `type.hp + Math.floor(this._wave / 3)` — boss gains +1 HP every 3 waves
+- Heavy target: `a-box`, red, radius 0.4, hp: 2, no speed, no lifetime
+
+#### Implementation
+
+**A. Boss Health Bar (VR HUD)**
+File: `client/src/index.html` → inside `<a-camera>` (and `game.html`)
+```html
+<a-entity id="hud-boss" visible="false" position="0 -0.25 -1">
+  <a-plane id="boss-bar-bg" width="0.5" height="0.03" color="#330000" shader="flat" opacity="0.7"></a-plane>
+  <a-plane id="boss-bar-fill" width="0.5" height="0.025" color="#ff3333" shader="flat"
+           position="0 0 0.001"></a-plane>
+  <a-text id="boss-bar-label" value="BOSS" position="0 0.03 0" scale="0.15 0.15 0.15"
+          color="#ff6666" font="mozillavr" align="center"></a-text>
+</a-entity>
+```
+
+**B. Wave Announcement**
+File: `client/src/js/game-main.js`
+- On every wave start in bossRush: show floating text "WAVE X" in HUD for 2s
+- Every 5 waves: show "BOSS WAVE!" in gold with larger text
+- Use existing `#hud-combo` position temporarily, or add `#hud-announcement` text
+
+**C. Boss Target Visual Scaling**
+File: `client/src/js/game/target-system.js` → `_spawnTarget()`
+- In bossMode, scale boss size with wave: `scale = 1.0 + (wave * 0.05)` (max 2.0)
+- Boss color shifts: wave 1-5 red, 6-10 orange (#ff6600), 11-15 purple (#aa00ff), 16+ gold (#ffd700)
+- Add pulsing emissive animation (like power-up but slower, red glow)
+- Add rotation animation: slower spin for heavier bosses
+
+**D. Boss Health Bar Update Logic**
+File: `client/src/js/game/target-system.js`
+- Track current boss target ref: `this._currentBoss = null`
+- On boss spawn: set `_currentBoss`, dispatch `boss-spawn` event with `{ hp, maxHp }`
+- On boss hit (partial damage, not destroyed): dispatch `boss-damaged` event with `{ hp, maxHp }`
+- On boss destroyed: dispatch `boss-killed` event, `_currentBoss = null`
+
+File: `client/src/js/game-main.js`
+- Listen `boss-spawn`: show `#hud-boss`, set bar width to 100%
+- Listen `boss-damaged`: update `#boss-bar-fill` width = `(hp/maxHp) * 0.5`
+- Listen `boss-killed`: hide `#hud-boss` after 0.5s fade, show "+X pts" flash
+- Color transitions: >50% HP green, 25-50% yellow, <25% red
+
+**E. Wave Clear Feedback**
+File: `client/src/js/game/target-system.js`
+- Track kills per wave: `this._waveKills` counter, reset every 5 kills
+- On wave clear (every 5 kills in bossMode): dispatch `boss-wave-clear` event
+- Briefly pause spawning for 1.5s between waves (dramatic pause)
+
+File: `client/src/js/game-main.js`
+- On `boss-wave-clear`: show "WAVE X CLEAR!" text, play level-up sound
+- Increment wave counter display
+
+**F. Audio**
+File: `client/src/js/core/audio-manager.js`
+- Add `playBossSpawn()`: deep rumble (60Hz sine, 500ms, heavy gain envelope)
+- Add `playBossHit()`: metallic clang (high freq + low freq combo, short)
+- Add `playBossKill()`: explosion + ascending chime (combine existing patterns)
+
+#### Acceptance Criteria
+- [ ] Boss health bar visible in HUD during bossRush
+- [ ] Health bar updates on each hit, color transitions by HP %
+- [ ] Health bar hidden when no boss present
+- [ ] Wave announcement shows "WAVE X" / "BOSS WAVE!" text
+- [ ] Boss targets scale larger with wave progression
+- [ ] Boss color shifts by wave tier (red → orange → purple → gold)
+- [ ] Boss has pulsing glow animation
+- [ ] 1.5s pause between waves for dramatic effect
+- [ ] Wave clear text + sound on every 5 kills
+- [ ] Boss spawn/hit/kill SFX (procedural, no files)
+- [ ] Works on Quest 2 (performance OK with larger bosses)
+- [ ] Existing non-boss modes unaffected
+
+---
 
 ### TASK-133: Power-Up System
 **Priority:** High

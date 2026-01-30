@@ -76,6 +76,9 @@ vr/
 │   │   │   │   ├── game-summary.js    # End-game stats builder
 │   │   │   │   ├── power-up-manager.js # Power-up buff system
 │   │   │   │   └── settings-util.js   # Settings read helper
+│   │   │   ├── core/
+│   │   │   │   ├── ...
+│   │   │   │   └── haptic-manager.js  # Controller vibration system
 │   │   │   ├── iap/
 │   │   │   │   ├── iap-manager.js     # Purchase flow (Meta DG / dev)
 │   │   │   │   └── iap-products.js    # Product definitions
@@ -162,6 +165,21 @@ vr/
 - Visual: blue tint radial overlay
 - Audio: music pitch drops to 0.5×
 - Non-stacking, visual-only (doesn't affect game timer)
+
+### HapticManager (haptic-manager.js)
+- Centralized controller vibration system
+- Scales all vibrations by `settings.vibration` (0-100 slider)
+- Pulses both controllers simultaneously
+- Presets: hit(), combo(n), powerUp(), slowMo(), damageTaken(), bossKill()
+- Pattern support: sequential pulse sequences with delays
+- Exposed as `window.__hapticManager` for non-module A-Frame components
+
+### Boss Rush System (enhanced target-system.js)
+- Boss health bar: HUD entity `#hud-boss` with fill + label
+- Wave system: every 5 kills = 1 wave, 1.5s pause between waves
+- Visual scaling: boss size grows with wave (1.0→2.0), color tiers (red→orange→purple→gold)
+- Events: `boss-spawn`, `boss-damaged`, `boss-killed`, `boss-wave-clear`
+- Audio: bossSpawn (rumble), bossHit (clang), bossKill (explosion+chime)
 
 ---
 
