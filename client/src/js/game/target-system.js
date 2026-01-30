@@ -5,7 +5,7 @@ import powerUpManager from './power-up-manager.js';
 import { getSettings } from './settings-util.js';
 
 const BASE_POINTS = 10;
-const ARENA = { x: 12, yMin: 1, yMax: 4, zMin: -14, zMax: -3 };
+const ARENA = { x: 11, yMin: 1, yMax: 4, zMin: -12, zMax: -3 };
 const COLORS = ['#e94560', '#ff6b6b', '#ffa502', '#2ed573', '#1e90ff', '#a855f7', '#ff69b4'];
 
 const TARGET_MATERIALS = {
@@ -126,26 +126,27 @@ class TargetSystem {
     const typeId = this._pickTargetType();
     const type = TARGET_TYPES[typeId];
 
-    // Use entity wrapper for compound geometry (wireframe overlay + boss)
+    // Set geometry directly on the entity so raycaster can intersect it
+    // Map HTML primitive names to geometry component primitive names (camelCase)
+    const GEO_MAP = { 'a-torus-knot': 'torusKnot' };
+    const geoPrimitive = GEO_MAP[type.geometry] || type.geometry.replace('a-', '');
     const el = document.createElement('a-entity');
     el.setAttribute('class', 'target');
-    const core = document.createElement(type.geometry);
 
+    // Set geometry on the entity itself (not a child) for raycaster hit detection
+    let geoStr = `primitive: ${geoPrimitive}`;
     if (type.geometry === 'a-torus') {
-      core.setAttribute('radius', String(type.radius));
-      core.setAttribute('radius-tubular', '0.06');
-      core.setAttribute('segments-radial', '8');
-      core.setAttribute('segments-tubular', '24');
+      geoStr += `; radius: ${type.radius}; radiusTubular: 0.06; segmentsRadial: 8; segmentsTubular: 24`;
     } else if (type.geometry === 'a-torus-knot') {
-      core.setAttribute('radius', String(type.radius * 0.6));
-      core.setAttribute('radius-tubular', '0.04');
+      geoStr += `; radius: ${type.radius * 0.6}; radiusTubular: 0.04`;
     } else {
-      core.setAttribute('radius', String(type.radius));
+      geoStr += `; radius: ${type.radius}`;
     }
+    el.setAttribute('geometry', geoStr);
 
     // All non-sphere types get slow rotation for visual interest
     if (type.geometry !== 'a-sphere') {
-      core.setAttribute('animation__rotate', {
+      el.setAttribute('animation__rotate', {
         property: 'rotation',
         to: '360 360 0',
         dur: 4000 + Math.random() * 2000,
@@ -156,9 +157,8 @@ class TargetSystem {
     const color = type.color || this._randomColor();
     // 3D materials: metallic + emissive for sci-fi look
     const matProps = TARGET_MATERIALS[typeId] || TARGET_MATERIALS.standard;
-    core.setAttribute('material', `color: ${color}; metalness: ${matProps.metalness}; roughness: ${matProps.roughness}; emissive: ${matProps.emissive}; emissiveIntensity: ${matProps.emissiveIntensity}`);
-    core.setAttribute('shadow', 'cast: true; receive: false');
-    el.appendChild(core);
+    el.setAttribute('material', `color: ${color}; metalness: ${matProps.metalness}; roughness: ${matProps.roughness}; emissive: ${matProps.emissive}; emissiveIntensity: ${matProps.emissiveIntensity}`);
+    el.setAttribute('shadow', 'cast: true; receive: false');
 
     // Wireframe overlay for visual depth
     if (typeId !== 'decoy') {
@@ -199,7 +199,7 @@ class TargetSystem {
       if (this._bossWave >= 16)     { bossColor = '#ffd700'; bossEmissive = '#ffaa00'; }
       else if (this._bossWave >= 11) { bossColor = '#aa00ff'; bossEmissive = '#7700cc'; }
       else if (this._bossWave >= 6)  { bossColor = '#ff6600'; bossEmissive = '#cc4400'; }
-      core.setAttribute('material', `color: ${bossColor}; metalness: 0.9; roughness: 0.1; emissive: ${bossEmissive}; emissiveIntensity: 0.6`);
+      el.setAttribute('material', `color: ${bossColor}; metalness: 0.9; roughness: 0.1; emissive: ${bossEmissive}; emissiveIntensity: 0.6`);
 
       // Boss compound geometry: outer rotating ring
       const bossRing = document.createElement('a-torus');
@@ -225,7 +225,7 @@ class TargetSystem {
       el.appendChild(bossRing2);
 
       // Pulsing glow on core
-      core.setAttribute('animation__glow', {
+      el.setAttribute('animation__glow', {
         property: 'material.emissiveIntensity', from: 0.3, to: 0.8,
         dur: 800, loop: true, dir: 'alternate', easing: 'easeInOutSine',
       });

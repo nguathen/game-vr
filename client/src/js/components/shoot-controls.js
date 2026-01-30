@@ -47,7 +47,10 @@ AFRAME.registerComponent('shoot-controls', {
     } else {
       if (intersections.length > 0) {
         const hit = intersections[0];
-        const targetEl = hit.object.el;
+        let targetEl = hit.object.el;
+        if (targetEl && !targetEl.classList.contains('target')) {
+          targetEl = targetEl.closest('.target');
+        }
         if (targetEl && targetEl.classList.contains('target')) {
           const damage = weapon?.damage || 1;
           targetEl.dispatchEvent(new CustomEvent('hit', {
