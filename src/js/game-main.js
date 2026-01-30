@@ -276,17 +276,44 @@ function _startCountdown() {
   let count = COUNTDOWN_FROM;
   _countdownNumber.textContent = count;
 
+  // 3D countdown for VR
+  const hudCountdown = document.getElementById('hud-countdown');
+  if (hudCountdown) {
+    hudCountdown.setAttribute('value', String(count));
+    hudCountdown.setAttribute('visible', 'true');
+    hudCountdown.setAttribute('scale', '0.8 0.8 0.8');
+  }
+
   const countInterval = setInterval(() => {
     count--;
     if (count > 0) {
       _countdownNumber.textContent = count;
+      if (hudCountdown) {
+        hudCountdown.setAttribute('value', String(count));
+        hudCountdown.setAttribute('animation__pop', {
+          property: 'scale', from: '1.0 1.0 1.0', to: '0.8 0.8 0.8',
+          dur: 300, easing: 'easeOutQuad',
+        });
+      }
       audioManager.playCountdownBeep();
     } else {
       _countdownNumber.textContent = 'GO!';
+      if (hudCountdown) {
+        hudCountdown.setAttribute('value', 'GO!');
+        hudCountdown.setAttribute('color', '#ffaa00');
+        hudCountdown.setAttribute('animation__pop', {
+          property: 'scale', from: '1.2 1.2 1.2', to: '0.8 0.8 0.8',
+          dur: 400, easing: 'easeOutElastic',
+        });
+      }
       audioManager.playGo();
       clearInterval(countInterval);
       setTimeout(() => {
         _countdownOverlay.classList.add('hidden');
+        if (hudCountdown) {
+          hudCountdown.setAttribute('visible', 'false');
+          hudCountdown.setAttribute('color', '#00ff88');
+        }
         startRound();
       }, 500);
     }
