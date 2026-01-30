@@ -8,6 +8,8 @@ const DEFAULT_SETTINGS = {
   reducedMotion: false,
   autoSubmitScore: true,
   showCombo: true,
+  bloom: true,
+  screenShake: 'medium',
 };
 
 function getSettings() {

@@ -16,11 +16,14 @@
   <script src="./js/components/particle-burst.js"></script>
   <script src="./js/components/damage-number.js"></script>
   <script src="./js/components/target-hit.js"></script>
+  <script src="./js/components/bloom-effect.js"></script>
+  <script src="./js/components/camera-effects.js"></script>
 
-  <a-scene id="scene" vr-mode-ui="enterVRButton: #enter-vr-btn">
+  <a-scene id="scene" vr-mode-ui="enterVRButton: #enter-vr-btn" shadow="type: pcfsoft; autoUpdate: true"
+           bloom-effect="strength: 0.6; radius: 0.4; threshold: 0.7">
     <!-- Player Rig -->
     <a-entity id="player-rig" position="0 0 0">
-      <a-camera id="camera" position="0 1.6 0" wasd-controls-enabled="false" look-controls>
+      <a-camera id="camera" position="0 1.6 0" wasd-controls-enabled="false" look-controls camera-effects="shakeLevel: medium">
         <!-- Game HUD (hidden until game starts) -->
         <!-- Crosshair: outer ring + main ring + center dot -->
         <a-ring id="crosshair-outer" position="0 0 -1" radius-inner="0.025" radius-outer="0.027"
@@ -312,7 +315,7 @@
       <!-- Sci-fi pillars with base rings and top orbs -->
       <a-entity class="arena-pillar" position="-14 0 -14">
         <a-cylinder position="0 2 0" radius="0.3" height="4"
-                    material="color: #1a1a4e; metalness: 0.9; roughness: 0.2"></a-cylinder>
+                    material="color: #1a1a4e; metalness: 0.9; roughness: 0.2" shadow="cast: true"></a-cylinder>
         <a-torus position="0 0.1 0" rotation="-90 0 0" radius="0.6" radius-tubular="0.015"
                  material="color: #00d4ff; emissive: #00d4ff; emissiveIntensity: 0.8; opacity: 0.3"></a-torus>
         <a-sphere position="0 4.2 0" radius="0.18"
@@ -321,7 +324,7 @@
       </a-entity>
       <a-entity class="arena-pillar" position="14 0 -14">
         <a-cylinder position="0 2 0" radius="0.3" height="4"
-                    material="color: #1a1a4e; metalness: 0.9; roughness: 0.2"></a-cylinder>
+                    material="color: #1a1a4e; metalness: 0.9; roughness: 0.2" shadow="cast: true"></a-cylinder>
         <a-torus position="0 0.1 0" rotation="-90 0 0" radius="0.6" radius-tubular="0.015"
                  material="color: #00d4ff; emissive: #00d4ff; emissiveIntensity: 0.8; opacity: 0.3"></a-torus>
         <a-sphere position="0 4.2 0" radius="0.18"
@@ -330,7 +333,7 @@
       </a-entity>
       <a-entity class="arena-pillar" position="-14 0 14">
         <a-cylinder position="0 2 0" radius="0.3" height="4"
-                    material="color: #1a1a4e; metalness: 0.9; roughness: 0.2"></a-cylinder>
+                    material="color: #1a1a4e; metalness: 0.9; roughness: 0.2" shadow="cast: true"></a-cylinder>
         <a-torus position="0 0.1 0" rotation="-90 0 0" radius="0.6" radius-tubular="0.015"
                  material="color: #ff44aa; emissive: #ff44aa; emissiveIntensity: 0.8; opacity: 0.3"></a-torus>
         <a-sphere position="0 4.2 0" radius="0.18"
@@ -339,7 +342,7 @@
       </a-entity>
       <a-entity class="arena-pillar" position="14 0 14">
         <a-cylinder position="0 2 0" radius="0.3" height="4"
-                    material="color: #1a1a4e; metalness: 0.9; roughness: 0.2"></a-cylinder>
+                    material="color: #1a1a4e; metalness: 0.9; roughness: 0.2" shadow="cast: true"></a-cylinder>
         <a-torus position="0 0.1 0" rotation="-90 0 0" radius="0.6" radius-tubular="0.015"
                  material="color: #ff44aa; emissive: #ff44aa; emissiveIntensity: 0.8; opacity: 0.3"></a-torus>
         <a-sphere position="0 4.2 0" radius="0.18"

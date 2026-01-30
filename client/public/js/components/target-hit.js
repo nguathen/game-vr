@@ -44,6 +44,10 @@ AFRAME.registerComponent('target-hit', {
           this.el.setAttribute('material', 'color', origColor);
         }
       }, 80);
+      // Notify boss health update
+      document.dispatchEvent(new CustomEvent('boss-damaged', {
+        detail: { hp: this._hp, maxHp: this.data.hp, el: this.el },
+      }));
       return;
     }
 

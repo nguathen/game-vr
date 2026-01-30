@@ -15,6 +15,7 @@ const THEMES = {
       { type: 'point', position: '8 6 -8', color: '#44ff44', intensity: 0.6, distance: 25 },
       { type: 'point', position: '0 4 8', color: '#ff88ff', intensity: 0.4, distance: 20 },
     ],
+    shadowLight: { color: '#4466ff', intensity: 0.6, position: '5 12 5' },
     pillarColor: '#1a1a4e',
     wallColor: '#0044aa',
     wallOpacity: 0.12,
@@ -40,6 +41,7 @@ const THEMES = {
       { type: 'point', position: '8 6 -8', color: '#ffaa44', intensity: 0.5, distance: 25 },
       { type: 'point', position: '0 4 8', color: '#ff4400', intensity: 0.3, distance: 20 },
     ],
+    shadowLight: { color: '#ff8844', intensity: 0.5, position: '5 12 5' },
     pillarColor: '#3a2211',
     wallColor: '#663311',
     wallOpacity: 0.12,
@@ -70,6 +72,7 @@ const THEMES = {
       { type: 'point', position: '8 6 -8', color: '#2266cc', intensity: 0.4, distance: 25 },
       { type: 'point', position: '0 4 8', color: '#6644ff', intensity: 0.3, distance: 20 },
     ],
+    shadowLight: { color: '#2244ff', intensity: 0.4, position: '5 12 5' },
     pillarColor: '#080820',
     wallColor: '#0a1133',
     wallOpacity: 0.06,
@@ -136,6 +139,7 @@ const THEMES = {
       { type: 'point', position: '8 6 -8', color: '#ff0088', intensity: 0.7, distance: 25 },
       { type: 'point', position: '0 4 8', color: '#00ff88', intensity: 0.4, distance: 20 },
     ],
+    shadowLight: { color: '#ff00ff', intensity: 0.5, position: '5 12 5' },
     pillarColor: '#220044',
     wallColor: '#440088',
     wallOpacity: 0.15,
@@ -215,6 +219,39 @@ function applyTheme(sceneEl, themeId) {
       if (l.position) light.setAttribute('position', l.position);
       if (l.distance) light.setAttribute('distance', String(l.distance));
     }
+  });
+
+  // === Shadow directional light ===
+  let shadowLight = gc.querySelector('#shadow-dir-light');
+  if (!shadowLight) {
+    shadowLight = document.createElement('a-light');
+    shadowLight.id = 'shadow-dir-light';
+    gc.appendChild(shadowLight);
+  }
+  const sl = theme.shadowLight || { color: '#4466ff', intensity: 0.6, position: '5 12 5' };
+  shadowLight.setAttribute('type', 'directional');
+  shadowLight.setAttribute('color', sl.color);
+  shadowLight.setAttribute('intensity', String(sl.intensity));
+  shadowLight.setAttribute('position', sl.position);
+  shadowLight.setAttribute('light', `castShadow: true; shadowMapWidth: 1024; shadowMapHeight: 1024; shadowCameraLeft: -20; shadowCameraRight: 20; shadowCameraTop: 20; shadowCameraBottom: -20; shadowCameraNear: 0.5; shadowCameraFar: 50`);
+
+  // === Floor edge gradient (ambient occlusion feel) ===
+  gc.querySelectorAll('.floor-edge-gradient').forEach(el => el.remove());
+  const edgePositions = [
+    { pos: '0 0.02 -14.5', rot: '-90 0 0', w: 30, h: 2 },
+    { pos: '0 0.02 14.5', rot: '-90 0 0', w: 30, h: 2 },
+    { pos: '-14.5 0.02 0', rot: '-90 90 0', w: 30, h: 2 },
+    { pos: '14.5 0.02 0', rot: '-90 90 0', w: 30, h: 2 },
+  ];
+  edgePositions.forEach(e => {
+    const grad = document.createElement('a-plane');
+    grad.classList.add('floor-edge-gradient');
+    grad.setAttribute('position', e.pos);
+    grad.setAttribute('rotation', e.rot);
+    grad.setAttribute('width', String(e.w));
+    grad.setAttribute('height', String(e.h));
+    grad.setAttribute('material', `shader: flat; color: #000000; opacity: 0.25; transparent: true`);
+    gc.appendChild(grad);
   });
 
   // Remove previous theme decorations

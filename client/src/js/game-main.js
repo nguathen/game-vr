@@ -79,6 +79,7 @@ function _initOnce() {
   document.addEventListener('shot-fired', () => {
     if (gameManager.state === GameState.PLAYING) {
       scoreManager.recordShot();
+      document.dispatchEvent(new CustomEvent('camera-fov-punch'));
     }
   });
   _scene.addEventListener('click', () => {
@@ -98,6 +99,7 @@ function _initOnce() {
     if (e.detail.active) {
       _showSlowMoOverlay();
       musicManager.setPlaybackRate(0.5);
+      document.dispatchEvent(new CustomEvent('camera-impact-zoom', { detail: { duration: 200 } }));
     } else {
       _hideSlowMoOverlay();
       musicManager.setPlaybackRate(1.0);
@@ -134,9 +136,15 @@ function _initOnce() {
     audioManager.playBossHit();
   });
 
-  document.addEventListener('boss-killed', () => {
+  document.addEventListener('boss-killed', (e) => {
     if (!hudBoss) return;
     setTimeout(() => hudBoss.setAttribute('visible', 'false'), 500);
+    // Boss kill particle burst at boss position
+    if (_scene && e.detail?.position) {
+      _spawnEventParticles(_scene, e.detail.position, 8, '#ffd700');
+    }
+    // Big camera shake on boss kill
+    document.dispatchEvent(new CustomEvent('camera-shake', { detail: { intensity: 0.03, duration: 300 } }));
   });
 
   document.addEventListener('boss-wave-clear', (e) => {
@@ -234,6 +242,13 @@ function _initRound(themeParam) {
       let color = '#ff44aa';
       if (combo >= 10) color = '#ffd700';
       else if (combo >= 5) color = '#ff8800';
+
+      // Camera shake scales with combo
+      if (combo >= 5) {
+        const intensity = combo >= 15 ? 0.025 : combo >= 10 ? 0.018 : 0.01;
+        const dur = combo >= 15 ? 200 : combo >= 10 ? 150 : 100;
+        document.dispatchEvent(new CustomEvent('camera-shake', { detail: { intensity, duration: dur } }));
+      }
       _hudCombo.setAttribute('color', color);
       _hudCombo.setAttribute('animation__pop', {
         property: 'scale',
@@ -246,6 +261,12 @@ function _initRound(themeParam) {
           property: 'position', from: '-0.01 0.2 -1', to: '0.01 0.2 -1',
           dur: 80, loop: 3, dir: 'alternate', easing: 'linear',
         });
+        // Energy burst at camera position for high combo
+        const cam = document.getElementById('camera');
+        if (cam && _scene) {
+          const cp = cam.object3D.getWorldPosition(new THREE.Vector3());
+          _spawnEventParticles(_scene, { x: cp.x, y: cp.y, z: cp.z - 2 }, 5, color);
+        }
       }
     } else {
       _hudCombo.setAttribute('value', '');
@@ -307,22 +328,112 @@ function _updateControllerLasers() {
   }
 }
 
+/** Theme-specific ambient particle palettes */
+const THEME_PARTICLES = {
+  cyber:  { dust: '#aaccff', sparks: '#00d4ff', debris: '#4466ff' },
+  sunset: { dust: '#ffccaa', sparks: '#ff6600', debris: '#ff4400' },
+  space:  { dust: '#8899cc', sparks: '#4488ff', debris: '#6644ff' },
+  neon:   { dust: '#ff88ff', sparks: '#ff00ff', debris: '#00ffff' },
+};
+
 function _spawnAmbientParticles(sceneEl) {
-  for (let i = 0; i < 25; i++) {
+  const palette = THEME_PARTICLES[_selectedTheme] || THEME_PARTICLES.cyber;
+
+  // --- Dust motes (40): slow, warm, subtle ---
+  for (let i = 0; i < 40; i++) {
     const p = document.createElement('a-sphere');
     const x = (Math.random() - 0.5) * 28;
-    const y = Math.random() * 4 + 0.5;
+    const y = Math.random() * 5 + 0.3;
     const z = (Math.random() - 0.5) * 28;
-    p.setAttribute('radius', String(0.02 + Math.random() * 0.03));
-    p.setAttribute('material', `shader: flat; color: #ffffff; opacity: ${0.1 + Math.random() * 0.15}`);
+    p.setAttribute('class', 'ambient-particle');
+    p.setAttribute('radius', String(0.008 + Math.random() * 0.012));
+    p.setAttribute('material', `shader: flat; color: ${palette.dust}; opacity: ${0.08 + Math.random() * 0.12}`);
     p.setAttribute('position', `${x} ${y} ${z}`);
     p.setAttribute('animation', {
       property: 'position',
-      to: `${x + (Math.random() - 0.5) * 2} ${y + 1 + Math.random()} ${z + (Math.random() - 0.5) * 2}`,
-      dur: 6000 + Math.random() * 4000,
+      to: `${x + (Math.random() - 0.5) * 3} ${y + 0.5 + Math.random() * 1.5} ${z + (Math.random() - 0.5) * 3}`,
+      dur: 8000 + Math.random() * 6000,
       easing: 'linear', loop: true, dir: 'alternate',
     });
     sceneEl.appendChild(p);
+  }
+
+  // --- Energy sparks (20): small, fast, bright emissive ---
+  for (let i = 0; i < 20; i++) {
+    const p = document.createElement('a-sphere');
+    const x = (Math.random() - 0.5) * 24;
+    const y = Math.random() * 4 + 1;
+    const z = (Math.random() - 0.5) * 24;
+    p.setAttribute('class', 'ambient-particle');
+    p.setAttribute('radius', String(0.006 + Math.random() * 0.008));
+    p.setAttribute('material', `shader: flat; color: ${palette.sparks}; opacity: ${0.3 + Math.random() * 0.4}`);
+    p.setAttribute('position', `${x} ${y} ${z}`);
+    // Fast random drift
+    p.setAttribute('animation__drift', {
+      property: 'position',
+      to: `${x + (Math.random() - 0.5) * 5} ${y + (Math.random() - 0.5) * 3} ${z + (Math.random() - 0.5) * 5}`,
+      dur: 2000 + Math.random() * 2000,
+      easing: 'easeInOutSine', loop: true, dir: 'alternate',
+    });
+    // Twinkle
+    p.setAttribute('animation__twinkle', {
+      property: 'material.opacity', from: 0.1, to: 0.6 + Math.random() * 0.3,
+      dur: 600 + Math.random() * 800,
+      loop: true, dir: 'alternate', easing: 'easeInOutSine',
+    });
+    sceneEl.appendChild(p);
+  }
+
+  // --- Floating debris (10): small geometric, slow rotation ---
+  const debrisGeoms = ['a-icosahedron', 'a-octahedron', 'a-dodecahedron'];
+  for (let i = 0; i < 10; i++) {
+    const geom = debrisGeoms[Math.floor(Math.random() * debrisGeoms.length)];
+    const p = document.createElement(geom);
+    const x = (Math.random() - 0.5) * 26;
+    const y = Math.random() * 4 + 1;
+    const z = (Math.random() - 0.5) * 26;
+    p.setAttribute('class', 'ambient-particle');
+    p.setAttribute('radius', String(0.02 + Math.random() * 0.03));
+    p.setAttribute('material', `color: ${palette.debris}; metalness: 0.7; roughness: 0.3; emissive: ${palette.debris}; emissiveIntensity: 0.3; opacity: ${0.15 + Math.random() * 0.2}`);
+    p.setAttribute('position', `${x} ${y} ${z}`);
+    p.setAttribute('animation__float', {
+      property: 'position',
+      to: `${x + (Math.random() - 0.5) * 2} ${y + Math.random() * 2} ${z + (Math.random() - 0.5) * 2}`,
+      dur: 7000 + Math.random() * 5000,
+      easing: 'easeInOutSine', loop: true, dir: 'alternate',
+    });
+    p.setAttribute('animation__spin', {
+      property: 'rotation',
+      to: `${Math.random() * 360} ${Math.random() * 360} ${Math.random() * 360}`,
+      dur: 6000 + Math.random() * 6000,
+      easing: 'linear', loop: true,
+    });
+    sceneEl.appendChild(p);
+  }
+}
+
+/** Spawn burst particles on game events (target destroy, combo, power-up) */
+function _spawnEventParticles(sceneEl, pos, count, color) {
+  for (let i = 0; i < count; i++) {
+    const p = document.createElement('a-sphere');
+    p.setAttribute('radius', '0.01');
+    p.setAttribute('material', `shader: flat; color: ${color}; opacity: 0.7`);
+    p.setAttribute('position', `${pos.x} ${pos.y} ${pos.z}`);
+    const dx = (Math.random() - 0.5) * 3;
+    const dy = Math.random() * 2;
+    const dz = (Math.random() - 0.5) * 3;
+    p.setAttribute('animation__burst', {
+      property: 'position',
+      to: `${pos.x + dx} ${pos.y + dy} ${pos.z + dz}`,
+      dur: 400 + Math.random() * 200,
+      easing: 'easeOutQuad',
+    });
+    p.setAttribute('animation__fade', {
+      property: 'material.opacity', from: 0.7, to: 0,
+      dur: 500, easing: 'easeOutQuad',
+    });
+    sceneEl.appendChild(p);
+    setTimeout(() => { if (p.parentNode) p.parentNode.removeChild(p); }, 600);
   }
 }
 
@@ -339,6 +450,18 @@ function _applyGameSettings(settings) {
 
   if (!settings.showCombo && _hudCombo) {
     _hudCombo.setAttribute('visible', 'false');
+  }
+
+  // Bloom toggle
+  const sceneEl = document.querySelector('a-scene');
+  if (sceneEl && sceneEl.hasAttribute('bloom-effect')) {
+    sceneEl.setAttribute('bloom-effect', 'enabled', settings.bloom !== false);
+  }
+
+  // Screen shake level
+  const cam = document.getElementById('camera');
+  if (cam && cam.hasAttribute('camera-effects')) {
+    cam.setAttribute('camera-effects', 'shakeLevel', settings.screenShake || 'medium');
   }
 }
 

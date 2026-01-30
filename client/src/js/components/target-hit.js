@@ -1,6 +1,7 @@
 /**
  * A-Frame component: handles target being hit.
  * Supports HP (multi-hit), damage numbers, and particle bursts.
+ * Works with entity wrappers — material is on the first child (core geometry).
  *
  * Usage: <a-entity target-hit="hp: 2; targetType: heavy">
  */
@@ -25,6 +26,12 @@ AFRAME.registerComponent('target-hit', {
     this.el.removeEventListener('click', this._onClick);
   },
 
+  /** Get the core geometry child (first child with a material) or fallback to el */
+  _core() {
+    const first = this.el.firstElementChild;
+    return (first && first.hasAttribute && first.getAttribute('material')) ? first : this.el;
+  },
+
   _onClick() {
     this._onHit({ detail: { damage: 1 } });
   },
@@ -34,14 +41,15 @@ AFRAME.registerComponent('target-hit', {
 
     const damage = evt?.detail?.damage || 1;
     this._hp -= damage;
+    const core = this._core();
 
     if (this._hp > 0) {
       // Flash on hit but don't destroy
-      const origColor = this.el.getAttribute('material')?.color || '#ffffff';
-      this.el.setAttribute('material', 'color', '#ffffff');
+      const origColor = core.getAttribute('material')?.color || '#ffffff';
+      core.setAttribute('material', 'color', '#ffffff');
       setTimeout(() => {
         if (!this._destroyed) {
-          this.el.setAttribute('material', 'color', origColor);
+          core.setAttribute('material', 'color', origColor);
         }
       }, 80);
       // Notify boss health update
@@ -52,18 +60,18 @@ AFRAME.registerComponent('target-hit', {
     }
 
     this._destroyed = true;
-    const color = this.el.getAttribute('material')?.color || '#ffffff';
+    const color = core.getAttribute('material')?.color || '#ffffff';
     const pos = this.el.object3D.position;
 
     // Spawn particle burst
     this._spawnParticles(color, pos);
 
-    // Explosion effect
+    // Explosion effect on wrapper (scale affects all children)
     this.el.removeAttribute('animation__float');
     this.el.removeAttribute('animation__move');
-    this.el.setAttribute('material', 'color', '#ffffff');
-    this.el.setAttribute('material', 'emissive', '#ffffff');
-    this.el.setAttribute('material', 'emissiveIntensity', '1.0');
+    core.setAttribute('material', 'color', '#ffffff');
+    core.setAttribute('material', 'emissive', '#ffffff');
+    core.setAttribute('material', 'emissiveIntensity', '1.0');
     this.el.setAttribute('animation__explode', {
       property: 'scale',
       to: '1.5 1.5 1.5',
@@ -90,7 +98,7 @@ AFRAME.registerComponent('target-hit', {
 
   _spawnParticles(color, pos) {
     const type = this.data.targetType;
-    const counts = { standard: 8, heavy: 15, bonus: 12, decoy: 6, speed: 10 };
+    const counts = { standard: 8, heavy: 15, bonus: 12, decoy: 6, speed: 10, powerup: 10 };
     const count = counts[type] || 8;
 
     const burstColor = type === 'bonus' ? '#ffd700' : type === 'decoy' ? '#661111' : color;

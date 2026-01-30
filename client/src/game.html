@@ -59,11 +59,14 @@
   <script src="./js/components/particle-burst.js"></script>
   <script src="./js/components/damage-number.js"></script>
   <script src="./js/components/target-hit.js"></script>
+  <script src="./js/components/bloom-effect.js"></script>
+  <script src="./js/components/camera-effects.js"></script>
 
-  <a-scene id="game-scene" vr-mode-ui="enterVRButton: #enter-vr-custom">
+  <a-scene id="game-scene" vr-mode-ui="enterVRButton: #enter-vr-custom" shadow="type: pcfsoft; autoUpdate: true"
+           bloom-effect="strength: 0.6; radius: 0.4; threshold: 0.7">
     <!-- Player Rig -->
     <a-entity id="player-rig" position="0 0 0" smooth-locomotion="speed: 3; camera: #camera">
-      <a-camera id="camera" position="0 1.6 0" wasd-controls="acceleration: 20" look-controls>
+      <a-camera id="camera" position="0 1.6 0" wasd-controls="acceleration: 20" look-controls camera-effects="shakeLevel: medium">
         <!-- Crosshair -->
         <a-ring id="crosshair" position="0 0 -1" radius-inner="0.01" radius-outer="0.015"
                 color="#00ff88" material="shader: flat; opacity: 0.8"></a-ring>
@@ -116,7 +119,7 @@
 
     <!-- Grid floor -->
     <a-plane position="0 0 0" rotation="-90 0 0" width="100" height="100"
-             material="color: #111133; wireframe: false" shadow="receive: true"></a-plane>
+             material="color: #111133; metalness: 0.8; roughness: 0.4" shadow="receive: true"></a-plane>
     <a-entity id="floor-grid" position="0 0.01 0" rotation="-90 0 0">
       <a-plane width="30" height="30" material="color: #1a1a4e; wireframe: true; wireframeLinewidth: 1; opacity: 0.3"
                segments-width="30" segments-height="30"></a-plane>

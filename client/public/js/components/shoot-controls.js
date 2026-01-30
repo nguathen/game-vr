@@ -61,15 +61,10 @@ AFRAME.registerComponent('shoot-controls', {
     // Notify shot fired (for accuracy tracking)
     document.dispatchEvent(new CustomEvent('shot-fired'));
 
-    // Haptic feedback
-    const intensity = weapon?.hapticIntensity || 0.3;
-    const duration = weapon?.hapticDuration || 50;
-    const tracked = this.el.components['oculus-touch-controls']
-      || this.el.components['tracked-controls'];
-    if (tracked && tracked.controller) {
-      try {
-        tracked.controller.gamepad?.hapticActuators?.[0]?.pulse(intensity, duration);
-      } catch (e) { /* ignore */ }
+    // Haptic feedback (centralized via HapticManager)
+    const hm = window.__hapticManager;
+    if (hm) {
+      hm.pulse(weapon?.hapticIntensity || 0.3, weapon?.hapticDuration || 50);
     }
   },
 

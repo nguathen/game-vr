@@ -18,12 +18,12 @@ const TARGET_MATERIALS = {
 };
 
 const TARGET_TYPES = {
-  standard:  { weight: 50, points: 10, radius: 0.3,  geometry: 'a-sphere', color: null, hp: 1, speed: 0, lifetime: null, coins: 0 },
-  speed:     { weight: 20, points: 25, radius: 0.22, geometry: 'a-sphere', color: '#ffdd00', hp: 1, speed: 2.5, lifetime: null, coins: 0 },
-  heavy:     { weight: 15, points: 30, radius: 0.4,  geometry: 'a-box', color: '#ff3333', hp: 2, speed: 0, lifetime: null, coins: 0 },
-  bonus:     { weight: 8,  points: 50, radius: 0.25, geometry: 'a-sphere', color: '#ffd700', hp: 1, speed: 0, lifetime: 2000, coins: 5 },
+  standard:  { weight: 50, points: 10, radius: 0.3,  geometry: 'a-icosahedron', color: null, hp: 1, speed: 0, lifetime: null, coins: 0 },
+  speed:     { weight: 20, points: 25, radius: 0.22, geometry: 'a-octahedron', color: '#ffdd00', hp: 1, speed: 2.5, lifetime: null, coins: 0 },
+  heavy:     { weight: 15, points: 30, radius: 0.4,  geometry: 'a-dodecahedron', color: '#ff3333', hp: 2, speed: 0, lifetime: null, coins: 0 },
+  bonus:     { weight: 8,  points: 50, radius: 0.25, geometry: 'a-torus', color: '#ffd700', hp: 1, speed: 0, lifetime: 2000, coins: 5 },
   decoy:     { weight: 7,  points: -10, radius: 0.3, geometry: 'a-sphere', color: '#882222', hp: 1, speed: 0, lifetime: null, coins: 0 },
-  powerup:   { weight: 5,  points: 10,  radius: 0.35, geometry: 'a-sphere', color: '#00ffaa', hp: 1, speed: 1.5, lifetime: 3000, coins: 0 },
+  powerup:   { weight: 5,  points: 10,  radius: 0.35, geometry: 'a-torus-knot', color: '#00ffaa', hp: 1, speed: 1.5, lifetime: 3000, coins: 0 },
 };
 
 class TargetSystem {
@@ -126,33 +126,69 @@ class TargetSystem {
     const typeId = this._pickTargetType();
     const type = TARGET_TYPES[typeId];
 
-    const el = document.createElement(type.geometry);
+    // Use entity wrapper for compound geometry (wireframe overlay + boss)
+    const el = document.createElement('a-entity');
     el.setAttribute('class', 'target');
-    if (type.geometry === 'a-box') {
-      const s = type.radius * 2;
-      el.setAttribute('width', String(s));
-      el.setAttribute('height', String(s));
-      el.setAttribute('depth', String(s));
-      // Slow rotation to show 3D depth on flat surfaces
-      el.setAttribute('animation__rotate', {
+    const core = document.createElement(type.geometry);
+
+    if (type.geometry === 'a-torus') {
+      core.setAttribute('radius', String(type.radius));
+      core.setAttribute('radius-tubular', '0.06');
+      core.setAttribute('segments-radial', '8');
+      core.setAttribute('segments-tubular', '24');
+    } else if (type.geometry === 'a-torus-knot') {
+      core.setAttribute('radius', String(type.radius * 0.6));
+      core.setAttribute('radius-tubular', '0.04');
+    } else {
+      core.setAttribute('radius', String(type.radius));
+    }
+
+    // All non-sphere types get slow rotation for visual interest
+    if (type.geometry !== 'a-sphere') {
+      core.setAttribute('animation__rotate', {
         property: 'rotation',
         to: '360 360 0',
         dur: 4000 + Math.random() * 2000,
         easing: 'linear', loop: true,
       });
-    } else {
-      el.setAttribute('radius', String(type.radius));
     }
 
     const color = type.color || this._randomColor();
     // 3D materials: metallic + emissive for sci-fi look
     const matProps = TARGET_MATERIALS[typeId] || TARGET_MATERIALS.standard;
-    el.setAttribute('material', `color: ${color}; metalness: ${matProps.metalness}; roughness: ${matProps.roughness}; emissive: ${matProps.emissive}; emissiveIntensity: ${matProps.emissiveIntensity}`);
+    core.setAttribute('material', `color: ${color}; metalness: ${matProps.metalness}; roughness: ${matProps.roughness}; emissive: ${matProps.emissive}; emissiveIntensity: ${matProps.emissiveIntensity}`);
+    core.setAttribute('shadow', 'cast: true; receive: false');
+    el.appendChild(core);
+
+    // Wireframe overlay for visual depth
+    if (typeId !== 'decoy') {
+      const wire = document.createElement(type.geometry === 'a-torus' ? 'a-torus' : type.geometry === 'a-torus-knot' ? 'a-torus-knot' : 'a-sphere');
+      const wr = type.radius * 1.05;
+      if (type.geometry === 'a-torus') {
+        wire.setAttribute('radius', String(type.radius * 1.05));
+        wire.setAttribute('radius-tubular', '0.065');
+        wire.setAttribute('segments-radial', '8');
+        wire.setAttribute('segments-tubular', '24');
+      } else if (type.geometry === 'a-torus-knot') {
+        wire.setAttribute('radius', String(type.radius * 0.65));
+        wire.setAttribute('radius-tubular', '0.05');
+      } else {
+        wire.setAttribute('radius', String(wr));
+      }
+      wire.setAttribute('material', `color: ${color}; wireframe: true; opacity: 0.15; transparent: true`);
+      el.appendChild(wire);
+    } else {
+      // Decoy: wireframe-only overlay to look "glitchy"
+      const wire = document.createElement('a-sphere');
+      wire.setAttribute('radius', String(type.radius * 1.08));
+      wire.setAttribute('material', `color: #ff0000; wireframe: true; opacity: 0.2; transparent: true`);
+      el.appendChild(wire);
+    }
 
     const hp = this._bossMode ? type.hp + Math.floor(this._wave / 3) : type.hp;
     el.setAttribute('target-hit', `hp: ${hp}; targetType: ${typeId}`);
 
-    // Boss mode: scale, color tiers, glow
+    // Boss mode: scale, color tiers, glow, compound geometry
     if (this._bossMode) {
       const scale = Math.min(1.0 + this._bossWave * 0.05, 2.0);
       el.setAttribute('scale', `${scale} ${scale} ${scale}`);
@@ -163,10 +199,33 @@ class TargetSystem {
       if (this._bossWave >= 16)     { bossColor = '#ffd700'; bossEmissive = '#ffaa00'; }
       else if (this._bossWave >= 11) { bossColor = '#aa00ff'; bossEmissive = '#7700cc'; }
       else if (this._bossWave >= 6)  { bossColor = '#ff6600'; bossEmissive = '#cc4400'; }
-      el.setAttribute('material', `color: ${bossColor}; metalness: 0.9; roughness: 0.1; emissive: ${bossEmissive}; emissiveIntensity: 0.6`);
+      core.setAttribute('material', `color: ${bossColor}; metalness: 0.9; roughness: 0.1; emissive: ${bossEmissive}; emissiveIntensity: 0.6`);
 
-      // Pulsing glow
-      el.setAttribute('animation__glow', {
+      // Boss compound geometry: outer rotating ring
+      const bossRing = document.createElement('a-torus');
+      bossRing.setAttribute('radius', String(type.radius * 1.6));
+      bossRing.setAttribute('radius-tubular', '0.02');
+      bossRing.setAttribute('material', `color: ${bossColor}; emissive: ${bossEmissive}; emissiveIntensity: 0.8; opacity: 0.4`);
+      bossRing.setAttribute('animation__spin', {
+        property: 'rotation', to: '0 360 0',
+        dur: 2000, easing: 'linear', loop: true,
+      });
+      el.appendChild(bossRing);
+
+      // Second ring (perpendicular)
+      const bossRing2 = document.createElement('a-torus');
+      bossRing2.setAttribute('radius', String(type.radius * 1.4));
+      bossRing2.setAttribute('radius-tubular', '0.015');
+      bossRing2.setAttribute('rotation', '90 0 0');
+      bossRing2.setAttribute('material', `color: ${bossColor}; emissive: ${bossEmissive}; emissiveIntensity: 0.6; opacity: 0.3`);
+      bossRing2.setAttribute('animation__spin', {
+        property: 'rotation', from: '90 0 0', to: '90 0 360',
+        dur: 3000, easing: 'linear', loop: true,
+      });
+      el.appendChild(bossRing2);
+
+      // Pulsing glow on core
+      core.setAttribute('animation__glow', {
         property: 'material.emissiveIntensity', from: 0.3, to: 0.8,
         dur: 800, loop: true, dir: 'alternate', easing: 'easeInOutSine',
       });
