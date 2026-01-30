@@ -269,6 +269,7 @@ function initMenu(profile) {
       console.log('[Menu] Exit clicked!');
       window.history.back();
     });
+    refreshRaycasters();
   }
 
   // Shop back button
