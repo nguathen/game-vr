@@ -264,9 +264,12 @@ function initMenu(profile) {
       exitBtn.setAttribute('material', 'opacity', 0.9);
     });
     exitBtn.addEventListener('click', () => {
+      // Exit VR session first, then navigate to about:blank to close TWA
       const scene = document.querySelector('a-scene');
       if (scene && scene.is('vr-mode')) scene.exitVR();
-      window.close();
+      setTimeout(() => {
+        window.location.href = 'about:blank';
+      }, 200);
     });
   }
 
