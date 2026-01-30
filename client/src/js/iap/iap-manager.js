@@ -21,7 +21,6 @@ class IAPManager {
         throw new Error('Digital Goods API not available');
       }
       this._service = await window.getDigitalGoodsService(META_BILLING_URL);
-      console.log('[IAPManager] Digital Goods API connected');
 
       await this._restoreEntitlements();
       await this._fetchPrices();
@@ -46,7 +45,6 @@ class IAPManager {
           product.metaTitle = detail.title;
         }
       }
-      console.log('[IAPManager] Prices fetched from Meta');
     } catch (err) {
       console.warn('[IAPManager] Failed to fetch prices:', err.message);
     }
@@ -63,7 +61,7 @@ class IAPManager {
 
         if (product.type === 'non_consumable') {
           await this._grantProduct(product);
-          console.log(`[IAPManager] Restored entitlement: ${product.id}`);
+          // Entitlement restored silently
         }
       }
     } catch (err) {
@@ -112,7 +110,7 @@ class IAPManager {
   }
 
   async _devPurchase(product) {
-    console.log(`[IAPManager] Dev purchase: ${product.id}`);
+    // Dev mode: instant grant without payment
 
     try {
       const res = await fetch('/api/checkout', {

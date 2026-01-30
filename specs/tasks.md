@@ -11,13 +11,14 @@
 | Status | Count |
 |--------|-------|
 | In Progress | 0 |
-| Pending | 9 |
-| Completed | 29 |
+| Pending | 1 |
+| Completed | 37 |
 
 > Note: V1 tasks (TASK-010~020) completed. V2 Phase 1 (TASK-101~105) completed + all 6 issues resolved.
 > V2 Phase 2 (TASK-106~110) completed.
 > V2 Phase 3 (TASK-111~115) completed.
 > V2 Phase 4 (TASK-116~120) completed.
+> V2 Cleanup (TASK-122~129) completed. Power-Ups (TASK-133) + Slow-Mo (TASK-134) completed.
 
 ---
 
@@ -297,7 +298,7 @@ Remove all Cloudflare Tunnel logic. Server runs local on `:3001`, nginx reverse 
 
 ### TASK-125: VR Menu UI Upgrade — Visual Polish & Layout
 **Priority:** High
-**Status:** Pending
+**Status:** Completed ✅ (2026-01-30)
 **Assigned:** /dev
 **Dependencies:** None
 
@@ -380,7 +381,7 @@ File: `client/src/index.html` → `#menu-content`
 
 ### TASK-126: VR HUD Upgrade — In-Game Display
 **Priority:** High
-**Status:** Pending
+**Status:** Completed ✅ (2026-01-30)
 **Assigned:** /dev
 **Dependencies:** None
 
@@ -465,7 +466,7 @@ File: `client/src/js/game-main.js` → `scoreManager.onChange`
 
 ### TASK-127: Game Over Screen Upgrade
 **Priority:** Medium
-**Status:** Pending
+**Status:** Completed ✅ (2026-01-30)
 **Assigned:** /dev
 **Dependencies:** None
 
@@ -629,7 +630,7 @@ File: `client/src/js/game-main.js` → `endGame()`
 
 ### TASK-128: VR Shop UI Upgrade
 **Priority:** Medium
-**Status:** Pending
+**Status:** Completed ✅ (2026-01-30)
 **Assigned:** /dev
 **Dependencies:** TASK-125
 
@@ -686,7 +687,7 @@ File: `client/src/index.html`
 
 ### TASK-129: Game Arena Visual Upgrade
 **Priority:** Medium
-**Status:** Pending
+**Status:** Completed ✅ (2026-01-30)
 **Assigned:** /dev
 **Dependencies:** None
 
@@ -744,7 +745,7 @@ File: `client/src/index.html`
 
 ### TASK-124: In-Game VR Shop UI
 **Priority:** High
-**Status:** Pending
+**Status:** Completed ✅ (2026-01-30)
 **Assigned:** /dev
 **Dependencies:** None
 
@@ -1066,7 +1067,7 @@ Fix 3 issues in `src/js/main.js`:
 
 ### TASK-122: Clean debug/temp and redundant files
 **Priority:** Medium
-**Status:** Pending
+**Status:** Completed ✅ (2026-01-30)
 **Assigned:** /dev
 **Dependencies:** None
 
@@ -1087,7 +1088,7 @@ Remove debug artifacts, tunnel logs, one-off test scripts, and duplicate compone
 
 ### TASK-123: Production logging cleanup
 **Priority:** Low
-**Status:** Pending
+**Status:** Completed ✅ (2026-01-30)
 **Assigned:** /dev
 **Dependencies:** None
 
@@ -1140,5 +1141,13 @@ Reduce console noise in production. Keep only actionable warnings; remove verbos
 | TASK-120 | UI Polish & Animations | 2026-01-29 |
 | TASK-130 | Quest build + deploy script | 2026-01-30 |
 | TASK-132 | Quest 2 build & run — portable deploy script | 2026-01-30 |
+| TASK-122 | Clean debug/temp and redundant files | 2026-01-30 |
+| TASK-123 | Production logging cleanup | 2026-01-30 |
+| TASK-124 | In-Game VR Shop UI | 2026-01-30 |
+| TASK-125 | VR Menu UI Upgrade | 2026-01-30 |
+| TASK-126 | VR HUD Upgrade | 2026-01-30 |
+| TASK-127 | Game Over Screen Upgrade | 2026-01-30 |
+| TASK-128 | VR Shop UI Upgrade | 2026-01-30 |
+| TASK-129 | Game Arena Visual Upgrade | 2026-01-30 |
 
 [View all completed tasks ->](./tasks-archive.md)

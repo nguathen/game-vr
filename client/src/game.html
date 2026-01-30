@@ -13,13 +13,33 @@
   <!-- Game Over overlay -->
   <div id="game-over-overlay" class="hidden">
     <div class="menu game-over-menu">
-      <h1>Game Over</h1>
-      <p id="final-score">Score: 0</p>
-      <p id="final-high-score">High Score: 0</p>
-      <p id="final-xp" class="xp-display">+0 XP</p>
-      <p id="final-stats" class="stats-line">Targets: 0 | Best Combo: x0</p>
+      <h1 class="game-over-title">Game Over</h1>
+      <div id="new-high-badge" class="new-high-badge hidden">NEW HIGH SCORE!</div>
+      <div class="score-section">
+        <p id="final-score" class="final-score">0</p>
+        <p id="final-high-score" class="final-high-score">High Score: 0</p>
+      </div>
+      <div class="stats-section">
+        <div class="stat-box">
+          <span id="stat-targets" class="stat-box-value">0</span>
+          <span class="stat-box-label">Targets</span>
+        </div>
+        <div class="stat-box">
+          <span id="stat-combo" class="stat-box-value">x0</span>
+          <span class="stat-box-label">Best Combo</span>
+        </div>
+        <div class="stat-box">
+          <span id="stat-accuracy" class="stat-box-value">0%</span>
+          <span class="stat-box-label">Accuracy</span>
+        </div>
+      </div>
+      <div class="xp-section">
+        <p id="final-xp" class="xp-display">+0 XP</p>
+        <div class="xp-bar-go"><div id="xp-fill-go" class="xp-fill"></div></div>
+      </div>
       <div class="buttons">
         <button id="btn-retry" class="btn btn-primary">Retry</button>
+        <button id="btn-share" class="btn btn-secondary">Share</button>
         <button id="btn-menu" class="btn btn-secondary">Main Menu</button>
       </div>
     </div>
