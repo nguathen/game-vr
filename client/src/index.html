@@ -18,18 +18,22 @@
   <script src="./js/components/target-hit.js"></script>
   <script src="./js/components/bloom-effect.js"></script>
   <script src="./js/components/camera-effects.js"></script>
+  <script src="./js/components/ambient-particles.js"></script>
+  <script src="./js/components/crosshair-feedback.js"></script>
+  <script src="./js/components/target-indicator.js"></script>
+  <script src="./js/components/teleport-pad.js"></script>
 
   <a-scene id="scene" vr-mode-ui="enterVRButton: #enter-vr-btn" shadow="type: pcfsoft; autoUpdate: true"
            bloom-effect="strength: 0.6; radius: 0.4; threshold: 0.7">
     <!-- Player Rig -->
     <a-entity id="player-rig" position="0 0 0">
-      <a-camera id="camera" position="0 1.6 0" wasd-controls-enabled="false" look-controls camera-effects="shakeLevel: medium">
+      <a-camera id="camera" position="0 1.6 0" wasd-controls-enabled="false" look-controls camera-effects="shakeLevel: medium" target-indicator>
         <!-- Game HUD (hidden until game starts) -->
         <!-- Crosshair: outer ring + main ring + center dot -->
         <a-ring id="crosshair-outer" position="0 0 -1" radius-inner="0.025" radius-outer="0.027"
                 color="#00ff88" material="shader: flat; opacity: 0.25" visible="false"></a-ring>
         <a-ring id="crosshair" position="0 0 -1" radius-inner="0.01" radius-outer="0.015"
-                color="#00ff88" material="shader: flat; opacity: 0.8" visible="false"></a-ring>
+                color="#00ff88" material="shader: flat; opacity: 0.8" crosshair-feedback visible="false"></a-ring>
         <a-circle id="crosshair-dot" position="0 0 -0.999" radius="0.003"
                   material="shader: flat; color: #00ff88; opacity: 0.9" visible="false"></a-circle>
 
@@ -314,16 +318,16 @@
       <!-- === ENERGY BARRIERS (soft, semi-transparent — replace solid walls) === -->
       <a-plane class="arena-barrier" position="0 2 -15" width="30" height="5"
                material="shader: flat; color: #0044aa; opacity: 0.04; transparent: true; side: double"
-               animation="property: material.opacity; from: 0.03; to: 0.06; dur: 3000; loop: true; dir: alternate; easing: easeInOutSine"></a-plane>
+               animation="property: material.opacity; from: 0.01; to: 0.025; dur: 3000; loop: true; dir: alternate; easing: easeInOutSine"></a-plane>
       <a-plane class="arena-barrier" position="-15 2 0" rotation="0 90 0" width="30" height="5"
                material="shader: flat; color: #0044aa; opacity: 0.04; transparent: true; side: double"
-               animation="property: material.opacity; from: 0.03; to: 0.06; dur: 3000; loop: true; dir: alternate; easing: easeInOutSine"></a-plane>
+               animation="property: material.opacity; from: 0.01; to: 0.025; dur: 3000; loop: true; dir: alternate; easing: easeInOutSine"></a-plane>
       <a-plane class="arena-barrier" position="15 2 0" rotation="0 90 0" width="30" height="5"
                material="shader: flat; color: #0044aa; opacity: 0.04; transparent: true; side: double"
-               animation="property: material.opacity; from: 0.03; to: 0.06; dur: 3000; loop: true; dir: alternate; easing: easeInOutSine"></a-plane>
+               animation="property: material.opacity; from: 0.01; to: 0.025; dur: 3000; loop: true; dir: alternate; easing: easeInOutSine"></a-plane>
       <a-plane class="arena-barrier" position="0 2 15" width="30" height="5"
                material="shader: flat; color: #0044aa; opacity: 0.04; transparent: true; side: double"
-               animation="property: material.opacity; from: 0.03; to: 0.06; dur: 3000; loop: true; dir: alternate; easing: easeInOutSine"></a-plane>
+               animation="property: material.opacity; from: 0.01; to: 0.025; dur: 3000; loop: true; dir: alternate; easing: easeInOutSine"></a-plane>
 
       <!-- Barrier base glow lines -->
       <a-plane class="wall-base-glow" position="0 0.05 -15" width="30" height="0.04"
@@ -395,6 +399,23 @@
       <a-entity id="floor-fade"></a-entity>
       <a-entity id="below-void"></a-entity>
       <a-entity id="distant-env"></a-entity>
+
+      <!-- Ambient particles (updated by applyTheme) -->
+      <a-entity id="ambient-particles-container"></a-entity>
+
+      <!-- Teleport pads -->
+      <a-circle teleport-pad="target: 0 0 -8" position="0 0.05 -8" rotation="-90 0 0" radius="0.8"
+                material="shader: flat; color: #00d4ff; opacity: 0.25; transparent: true"
+                animation="property: material.opacity; from: 0.15; to: 0.35; dur: 1500; loop: true; dir: alternate"></a-circle>
+      <a-circle teleport-pad="target: 0 0 8" position="0 0.05 8" rotation="-90 0 0" radius="0.8"
+                material="shader: flat; color: #00d4ff; opacity: 0.25; transparent: true"
+                animation="property: material.opacity; from: 0.15; to: 0.35; dur: 1500; loop: true; dir: alternate"></a-circle>
+      <a-circle teleport-pad="target: -8 0 0" position="-8 0.05 0" rotation="-90 0 0" radius="0.8"
+                material="shader: flat; color: #00d4ff; opacity: 0.25; transparent: true"
+                animation="property: material.opacity; from: 0.15; to: 0.35; dur: 1500; loop: true; dir: alternate"></a-circle>
+      <a-circle teleport-pad="target: 8 0 0" position="8 0.05 0" rotation="-90 0 0" radius="0.8"
+                material="shader: flat; color: #00d4ff; opacity: 0.25; transparent: true"
+                animation="property: material.opacity; from: 0.15; to: 0.35; dur: 1500; loop: true; dir: alternate"></a-circle>
 
       <!-- Target container -->
       <a-entity id="target-container"></a-entity>

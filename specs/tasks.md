@@ -11,7 +11,7 @@
 | Status | Count |
 |--------|-------|
 | In Progress | 0 |
-| Pending | 0 |
+| Pending | 3 |
 | Completed | 42 |
 
 > V1 (TASK-010~020), V2 Phase 1-4 (TASK-101~120), Cleanup (TASK-122~129),
@@ -32,7 +32,11 @@ _None_
 
 ## Pending
 
-_None_
+| Task | Title | Priority |
+|------|-------|----------|
+| TASK-231 | Open Sky — Distant Horizon & Atmospheric Depth | High |
+| TASK-232 | Dissolve the Cage — Softer Arena Boundaries | High |
+| TASK-233 | Peripheral Breathing — Reduce Screen-Edge Effects | Medium |
 
 ---
 

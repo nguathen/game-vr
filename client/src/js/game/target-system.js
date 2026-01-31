@@ -5,7 +5,14 @@ import powerUpManager from './power-up-manager.js';
 import { getSettings } from './settings-util.js';
 
 const BASE_POINTS = 10;
-const ARENA = { x: 11, yMin: 1, yMax: 4, zMin: -12, zMax: -3 };
+// 360-degree spawn: distance bands (close/mid/far), full height range, hemisphere bias
+const SPAWN = {
+  distMin: 4, distMax: 14,   // distance from player
+  yMin: 0.5, yMax: 6,        // floor to overhead
+  frontBias: 0.60,            // 60% front hemisphere
+  sideBias: 0.25,             // 25% sides
+  // remaining 15% behind
+};
 const COLORS = ['#e94560', '#ff6b6b', '#ffa502', '#2ed573', '#1e90ff', '#a855f7', '#ff69b4'];
 
 const TARGET_MATERIALS = {
@@ -240,10 +247,17 @@ class TargetSystem {
       }));
     }
 
-    const x = this._rand(-ARENA.x, ARENA.x);
-    const y = this._rand(ARENA.yMin, ARENA.yMax);
-    const z = this._rand(ARENA.zMin, ARENA.zMax);
+    // 360-degree spawn with hemisphere bias
+    const spawnPos = this._pick360Position();
+    const x = spawnPos.x;
+    const y = spawnPos.y;
+    const z = spawnPos.z;
     el.setAttribute('position', `${x} ${y} ${z}`);
+
+    // Dispatch spatial spawn event for directional audio
+    document.dispatchEvent(new CustomEvent('target-spawn-at', {
+      detail: { x, y, z, type: typeId },
+    }));
 
     el.setAttribute('animation__spawn', {
       property: 'scale', from: '0 0 0', to: '1 1 1',
@@ -302,7 +316,7 @@ class TargetSystem {
 
     this._container.appendChild(el);
     this._targets.add(el);
-    audioManager.playSpawn();
+    audioManager.playSpawn({ x, y, z });
   }
 
   _onTargetHit(el, damage = 1, hitPos = null) {
@@ -317,6 +331,7 @@ class TargetSystem {
       this._combo = 0;
       this._onComboChange?.(0);
       audioManager.playMiss();
+      document.dispatchEvent(new CustomEvent('crosshair-miss'));
       this._spawnDamageNumber(pos, basePoints, '#ff4444', '');
       this._flashScreen('miss');
     } else {
@@ -337,8 +352,9 @@ class TargetSystem {
       scoreManager.add(points);
       this._onComboChange?.(this._combo);
 
-      audioManager.playHit();
+      audioManager.playHit(pos);
       window.__hapticManager?.hit();
+      document.dispatchEvent(new CustomEvent('crosshair-hit'));
       if (this._combo >= 2) {
         audioManager.playCombo(this._combo);
         window.__hapticManager?.combo(this._combo);
@@ -487,6 +503,39 @@ class TargetSystem {
       if (el.parentNode) el.parentNode.removeChild(el);
     });
     this._targets.clear();
+  }
+
+  _pick360Position() {
+    // Pick angle with hemisphere bias: front 60%, sides 25%, behind 15%
+    let angle;
+    const r = Math.random();
+    if (r < SPAWN.frontBias) {
+      // Front hemisphere: -70° to +70° (facing -Z)
+      angle = (Math.random() - 0.5) * (140 * Math.PI / 180);
+    } else if (r < SPAWN.frontBias + SPAWN.sideBias) {
+      // Sides: 70°–110° left or right
+      const side = Math.random() < 0.5 ? 1 : -1;
+      angle = side * (70 + Math.random() * 40) * Math.PI / 180;
+    } else {
+      // Behind: 110°–180° left or right
+      const side = Math.random() < 0.5 ? 1 : -1;
+      angle = side * (110 + Math.random() * 70) * Math.PI / 180;
+    }
+
+    // Distance: weighted toward mid-range
+    const dist = SPAWN.distMin + Math.random() * (SPAWN.distMax - SPAWN.distMin);
+    const y = this._rand(SPAWN.yMin, SPAWN.yMax);
+
+    // Convert to XZ (angle 0 = -Z direction = forward)
+    const x = Math.sin(angle) * dist;
+    const z = -Math.cos(angle) * dist;
+
+    // Clamp to arena bounds (platform is 32x32, barriers at ±15)
+    return {
+      x: THREE.MathUtils.clamp(x, -13, 13),
+      y,
+      z: THREE.MathUtils.clamp(z, -13, 13),
+    };
   }
 
   _randomColor() {

@@ -751,7 +751,7 @@ body {
   left: 0;
   right: 0;
   bottom: 0;
-  background: radial-gradient(ellipse at center, transparent 40%, rgba(0, 100, 255, 0.12) 100%);
+  background: radial-gradient(ellipse at center, transparent 60%, rgba(0, 100, 255, 0.05) 100%);
   pointer-events: none;
   z-index: 50;
   opacity: 0;
@@ -759,6 +759,31 @@ body {
 }
 .slow-mo-overlay.active {
   opacity: 1;
+}
+
+/* Combo Vignette Overlay (TASK-227) */
+.combo-vignette {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
+  z-index: 49;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+.combo-vignette.active {
+  opacity: 1;
+}
+.combo-vignette.combo-low {
+  background: radial-gradient(ellipse at center, transparent 65%, rgba(100, 60, 255, 0.04) 100%);
+}
+.combo-vignette.combo-mid {
+  background: radial-gradient(ellipse at center, transparent 60%, rgba(255, 100, 0, 0.06) 100%);
+}
+.combo-vignette.combo-high {
+  background: radial-gradient(ellipse at center, transparent 60%, rgba(255, 200, 0, 0.06) 100%);
 }
 
 /* Skin Grid (TASK-113) */
@@ -1110,4 +1135,18 @@ body {
 @keyframes loading-pulse {
   0%, 100% { opacity: 0.3; transform: scale(0.8); }
   50% { opacity: 1; transform: scale(1); }
+}
+
+/* Teleport comfort vignette */
+.teleport-vignette {
+  position: fixed;
+  top: 0; left: 0; width: 100%; height: 100%;
+  pointer-events: none;
+  z-index: 50;
+  background: radial-gradient(ellipse at center, transparent 40%, rgba(0, 0, 0, 0.9) 75%);
+  opacity: 0;
+  transition: opacity 0.12s ease-in;
+}
+.teleport-vignette.active {
+  opacity: 1;
 }

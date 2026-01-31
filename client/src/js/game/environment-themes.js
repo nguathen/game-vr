@@ -4,16 +4,16 @@ const THEMES = {
     name: 'Cyber Arena',
     icon: '💎',
     unlockLevel: 1,
-    sky: '#0a0a1a',
+    sky: '#0c0c24',
     floor: '#111133',
     grid: '#1a1a4e',
-    gridOpacity: 0.3,
+    gridOpacity: 0.12,
     lights: [
-      { type: 'ambient', color: '#222244', intensity: 0.4 },
-      { type: 'point', position: '0 10 0', color: '#4466ff', intensity: 1.2, distance: 40 },
-      { type: 'point', position: '-8 6 -8', color: '#ff4444', intensity: 0.6, distance: 25 },
-      { type: 'point', position: '8 6 -8', color: '#44ff44', intensity: 0.6, distance: 25 },
-      { type: 'point', position: '0 4 8', color: '#ff88ff', intensity: 0.4, distance: 20 },
+      { type: 'ambient', color: '#2a2a50', intensity: 0.55 },
+      { type: 'point', position: '0 10 0', color: '#4466ff', intensity: 1.2, distance: 50 },
+      { type: 'point', position: '-8 6 -8', color: '#ff4444', intensity: 0.6, distance: 30 },
+      { type: 'point', position: '8 6 -8', color: '#44ff44', intensity: 0.6, distance: 30 },
+      { type: 'point', position: '0 4 8', color: '#ff88ff', intensity: 0.4, distance: 25 },
     ],
     shadowLight: { color: '#4466ff', intensity: 0.6, position: '5 12 5' },
     pillarColor: '#1a1a4e',
@@ -23,8 +23,8 @@ const THEMES = {
     pillarGlowColor: '#00d4ff',
     baseGlowColor: '#0088ff',
     cornerGlowColor: '#0088ff',
-    // Sky gradient: bottom → top
-    skyGradient: { bottom: '#0a0a2e', mid: '#0a0a1a', top: '#050520' },
+    // Sky gradient: bottom → top (brighter for open feel)
+    skyGradient: { bottom: '#121240', mid: '#0e0e2e', top: '#080828' },
     // Floor fade color
     floorFadeColor: '#0a0a1a',
     // Platform
@@ -45,42 +45,50 @@ const THEMES = {
     ],
     // Distant environment
     distantEnv: [
-      // Cyber buildings (front)
-      { tag: 'a-box', position: '-20 5 -40', width: '4', height: '10', depth: '4', material: 'color: #0a0a2e; metalness: 0.9; roughness: 0.2; emissive: #112244; emissiveIntensity: 0.3' },
-      { tag: 'a-box', position: '-12 8 -45', width: '3', height: '16', depth: '3', material: 'color: #0a0a2e; metalness: 0.9; roughness: 0.2; emissive: #112244; emissiveIntensity: 0.3' },
-      { tag: 'a-box', position: '0 6 -42', width: '5', height: '12', depth: '5', material: 'color: #0a0a2e; metalness: 0.9; roughness: 0.2; emissive: #0a1133; emissiveIntensity: 0.3' },
-      { tag: 'a-box', position: '14 9 -48', width: '3.5', height: '18', depth: '3.5', material: 'color: #0a0a2e; metalness: 0.9; roughness: 0.2; emissive: #112244; emissiveIntensity: 0.3' },
-      { tag: 'a-box', position: '22 4 -38', width: '3', height: '8', depth: '3', material: 'color: #0a0a2e; metalness: 0.9; roughness: 0.2; emissive: #0a1133; emissiveIntensity: 0.2' },
-      // Window strips on buildings (emissive lines)
-      { tag: 'a-plane', position: '-20 6 -37.9', width: '3', height: '0.08', material: 'shader: flat; color: #4466ff; emissive: #4466ff; emissiveIntensity: 1; opacity: 0.5', animation: 'property: material.opacity; from: 0.3; to: 0.6; dur: 2000; loop: true; dir: alternate' },
-      { tag: 'a-plane', position: '-12 10 -43.4', width: '2', height: '0.08', material: 'shader: flat; color: #00d4ff; emissive: #00d4ff; emissiveIntensity: 1; opacity: 0.5', animation: 'property: material.opacity; from: 0.3; to: 0.7; dur: 2500; loop: true; dir: alternate' },
-      { tag: 'a-plane', position: '14 12 -46.2', width: '2.5', height: '0.08', material: 'shader: flat; color: #4466ff; emissive: #4466ff; emissiveIntensity: 1; opacity: 0.6', animation: 'property: material.opacity; from: 0.4; to: 0.7; dur: 1800; loop: true; dir: alternate' },
+      // Cyber buildings (front) — more visible for depth
+      { tag: 'a-box', position: '-20 5 -40', width: '4', height: '10', depth: '4', material: 'color: #10103a; metalness: 0.9; roughness: 0.2; emissive: #1a2a55; emissiveIntensity: 0.5' },
+      { tag: 'a-box', position: '-12 8 -45', width: '3', height: '16', depth: '3', material: 'color: #10103a; metalness: 0.9; roughness: 0.2; emissive: #1a2a55; emissiveIntensity: 0.5' },
+      { tag: 'a-box', position: '0 6 -42', width: '5', height: '12', depth: '5', material: 'color: #10103a; metalness: 0.9; roughness: 0.2; emissive: #152244; emissiveIntensity: 0.5' },
+      { tag: 'a-box', position: '14 9 -48', width: '3.5', height: '18', depth: '3.5', material: 'color: #10103a; metalness: 0.9; roughness: 0.2; emissive: #1a2a55; emissiveIntensity: 0.5' },
+      { tag: 'a-box', position: '22 4 -38', width: '3', height: '8', depth: '3', material: 'color: #10103a; metalness: 0.9; roughness: 0.2; emissive: #152244; emissiveIntensity: 0.4' },
+      // Window strips on buildings
+      { tag: 'a-plane', position: '-20 6 -37.9', width: '3', height: '0.08', material: 'shader: flat; color: #4466ff; emissive: #4466ff; emissiveIntensity: 1; opacity: 0.6', animation: 'property: material.opacity; from: 0.4; to: 0.7; dur: 2000; loop: true; dir: alternate' },
+      { tag: 'a-plane', position: '-12 10 -43.4', width: '2', height: '0.08', material: 'shader: flat; color: #00d4ff; emissive: #00d4ff; emissiveIntensity: 1; opacity: 0.6', animation: 'property: material.opacity; from: 0.4; to: 0.8; dur: 2500; loop: true; dir: alternate' },
+      { tag: 'a-plane', position: '14 12 -46.2', width: '2.5', height: '0.08', material: 'shader: flat; color: #4466ff; emissive: #4466ff; emissiveIntensity: 1; opacity: 0.7', animation: 'property: material.opacity; from: 0.5; to: 0.8; dur: 1800; loop: true; dir: alternate' },
       // Left side buildings
-      { tag: 'a-box', position: '-38 7 -10', width: '4', height: '14', depth: '4', material: 'color: #0a0a2e; metalness: 0.9; roughness: 0.2; emissive: #112244; emissiveIntensity: 0.2' },
-      { tag: 'a-box', position: '-42 5 -5', width: '3', height: '10', depth: '3', material: 'color: #0a0a2e; metalness: 0.9; roughness: 0.2; emissive: #0a1133; emissiveIntensity: 0.2' },
+      { tag: 'a-box', position: '-38 7 -10', width: '4', height: '14', depth: '4', material: 'color: #10103a; metalness: 0.9; roughness: 0.2; emissive: #1a2a55; emissiveIntensity: 0.4' },
+      { tag: 'a-box', position: '-42 5 -5', width: '3', height: '10', depth: '3', material: 'color: #10103a; metalness: 0.9; roughness: 0.2; emissive: #152244; emissiveIntensity: 0.35' },
       // Right side buildings
-      { tag: 'a-box', position: '38 6 -8', width: '3.5', height: '12', depth: '3.5', material: 'color: #0a0a2e; metalness: 0.9; roughness: 0.2; emissive: #112244; emissiveIntensity: 0.2' },
-      { tag: 'a-box', position: '44 4  0', width: '3', height: '8', depth: '3', material: 'color: #0a0a2e; metalness: 0.9; roughness: 0.2; emissive: #0a1133; emissiveIntensity: 0.2' },
-      // Grid horizon line (front)
-      { tag: 'a-plane', position: '0 0.02 -35', rotation: '-90 0 0', width: '80', height: '0.06', material: 'shader: flat; color: #4466ff; emissive: #4466ff; emissiveIntensity: 1; opacity: 0.15' },
+      { tag: 'a-box', position: '38 6 -8', width: '3.5', height: '12', depth: '3.5', material: 'color: #10103a; metalness: 0.9; roughness: 0.2; emissive: #1a2a55; emissiveIntensity: 0.4' },
+      { tag: 'a-box', position: '44 4  0', width: '3', height: '8', depth: '3', material: 'color: #10103a; metalness: 0.9; roughness: 0.2; emissive: #152244; emissiveIntensity: 0.35' },
+      // Behind player buildings (new — so player sees depth when turning around)
+      { tag: 'a-box', position: '-16 6 35', width: '3.5', height: '12', depth: '3.5', material: 'color: #10103a; metalness: 0.9; roughness: 0.2; emissive: #1a2a55; emissiveIntensity: 0.4' },
+      { tag: 'a-box', position: '10 4 40', width: '3', height: '8', depth: '3', material: 'color: #10103a; metalness: 0.9; roughness: 0.2; emissive: #152244; emissiveIntensity: 0.35' },
+      { tag: 'a-plane', position: '-16 7 33', width: '2.5', height: '0.08', material: 'shader: flat; color: #4466ff; emissive: #4466ff; emissiveIntensity: 1; opacity: 0.5', animation: 'property: material.opacity; from: 0.3; to: 0.6; dur: 2200; loop: true; dir: alternate' },
+      // Horizon glow ring — gives sense of infinite open space
+      { tag: 'a-torus', position: '0 -1 0', rotation: '-90 0 0', radius: '80', 'radius-tubular': '0.15', material: 'shader: flat; color: #1a2a55; emissive: #1a2a55; emissiveIntensity: 1; opacity: 0.12', animation: 'property: material.opacity; from: 0.08; to: 0.15; dur: 4000; loop: true; dir: alternate; easing: easeInOutSine' },
+      // Grid horizon line (all 4 directions for openness)
+      { tag: 'a-plane', position: '0 0.02 -35', rotation: '-90 0 0', width: '80', height: '0.06', material: 'shader: flat; color: #4466ff; emissive: #4466ff; emissiveIntensity: 1; opacity: 0.2' },
+      { tag: 'a-plane', position: '0 0.02 35', rotation: '-90 0 0', width: '80', height: '0.06', material: 'shader: flat; color: #4466ff; emissive: #4466ff; emissiveIntensity: 1; opacity: 0.15' },
     ],
     decorations: [],
+    ambientParticles: { count: 25, color: '#4488ff', color2: '#ff44aa', area: 22, height: 8 },
   },
   space: {
     id: 'space',
     name: 'Deep Space',
     icon: '🌌',
     unlockLevel: 6,
-    sky: '#010105',
+    sky: '#050515',
     floor: '#060610',
     grid: '#0a0a22',
-    gridOpacity: 0.1,
+    gridOpacity: 0.08,
     lights: [
-      { type: 'ambient', color: '#0a0a18', intensity: 0.25 },
-      { type: 'point', position: '0 10 0', color: '#2244ff', intensity: 0.8, distance: 40 },
-      { type: 'point', position: '-8 6 -8', color: '#4488ff', intensity: 0.4, distance: 25 },
-      { type: 'point', position: '8 6 -8', color: '#2266cc', intensity: 0.4, distance: 25 },
-      { type: 'point', position: '0 4 8', color: '#6644ff', intensity: 0.3, distance: 20 },
+      { type: 'ambient', color: '#141428', intensity: 0.35 },
+      { type: 'point', position: '0 10 0', color: '#2244ff', intensity: 0.9, distance: 50 },
+      { type: 'point', position: '-8 6 -8', color: '#4488ff', intensity: 0.5, distance: 30 },
+      { type: 'point', position: '8 6 -8', color: '#2266cc', intensity: 0.5, distance: 30 },
+      { type: 'point', position: '0 4 8', color: '#6644ff', intensity: 0.35, distance: 25 },
     ],
     shadowLight: { color: '#2244ff', intensity: 0.4, position: '5 12 5' },
     pillarColor: '#080820',
@@ -90,7 +98,7 @@ const THEMES = {
     pillarGlowColor: '#4488ff',
     baseGlowColor: '#2244ff',
     cornerGlowColor: '#2244ff',
-    skyGradient: { bottom: '#050515', mid: '#010105', top: '#010105' },
+    skyGradient: { bottom: '#0a0a25', mid: '#050518', top: '#030310' },
     floorFadeColor: '#010105',
     platformSlabColor: '#040412',
     edgeGlowColor: '#2244ff',
@@ -142,6 +150,7 @@ const THEMES = {
       { tag: 'a-sphere', position: '-28 17 -44', radius: '0.05', material: 'shader: flat; color: #ccddff; opacity: 0.3', animation: 'property: material.opacity; from: 0.1; to: 0.45; dur: 2600; loop: true; dir: alternate' },
     ],
     decorations: [],
+    ambientParticles: { count: 20, color: '#aaccff', color2: '#6644aa', area: 22, height: 10 },
   },
 };
 
@@ -180,7 +189,7 @@ function applyTheme(sceneEl, themeId) {
   // Platform edge glow
   const edgeColor = theme.edgeGlowColor || '#0088ff';
   gc.querySelectorAll('.platform-edge').forEach(el => {
-    el.setAttribute('material', `shader: flat; color: ${edgeColor}; emissive: ${edgeColor}; emissiveIntensity: 1; opacity: 0.5`);
+    el.setAttribute('material', `shader: flat; color: ${edgeColor}; emissive: ${edgeColor}; emissiveIntensity: 1; opacity: 0.2`);
   });
 
   // Under-glow rings
@@ -207,7 +216,7 @@ function applyTheme(sceneEl, themeId) {
   // Energy barriers
   const barriers = gc.querySelectorAll('.arena-barrier');
   barriers.forEach(barrier => {
-    barrier.setAttribute('material', `shader: flat; color: ${theme.barrierColor}; opacity: 0.04; transparent: true; side: double`);
+    barrier.setAttribute('material', `shader: flat; color: ${theme.barrierColor}; opacity: 0.015; transparent: true; side: double`);
   });
 
   // Floor glow rings (on platform surface)
@@ -224,13 +233,13 @@ function applyTheme(sceneEl, themeId) {
   // Base glow lines
   const baseGlow = theme.baseGlowColor || '#0088ff';
   gc.querySelectorAll('.wall-base-glow').forEach(el => {
-    el.setAttribute('material', `shader: flat; color: ${baseGlow}; emissive: ${baseGlow}; emissiveIntensity: 1; opacity: 0.5`);
+    el.setAttribute('material', `shader: flat; color: ${baseGlow}; emissive: ${baseGlow}; emissiveIntensity: 1; opacity: 0.15`);
   });
 
   // Corner glow lines
   const cornerGlow = theme.cornerGlowColor || '#0088ff';
   gc.querySelectorAll('.wall-corner-glow').forEach(el => {
-    el.setAttribute('material', `color: ${cornerGlow}; emissive: ${cornerGlow}; emissiveIntensity: 1; opacity: 0.4`);
+    el.setAttribute('material', `color: ${cornerGlow}; emissive: ${cornerGlow}; emissiveIntensity: 1; opacity: 0.15`);
   });
 
   // Pillars
@@ -286,7 +295,7 @@ function applyTheme(sceneEl, themeId) {
     grad.setAttribute('rotation', e.rot);
     grad.setAttribute('width', String(e.w));
     grad.setAttribute('height', String(e.h));
-    grad.setAttribute('material', `shader: flat; color: #000000; opacity: 0.25; transparent: true`);
+    grad.setAttribute('material', `shader: flat; color: #000000; opacity: 0.1; transparent: true`);
     gc.appendChild(grad);
   });
 
@@ -360,6 +369,20 @@ function applyTheme(sceneEl, themeId) {
   gc.querySelectorAll('.theme-decoration').forEach(el => el.remove());
   if (theme.decorations && theme.decorations.length > 0) {
     _spawnDecorations(gc, theme.decorations, 'theme-decoration');
+  }
+
+  // === Ambient particles ===
+  const apContainer = gc.querySelector('#ambient-particles-container');
+  if (apContainer) {
+    // Remove old particles entity
+    const old = apContainer.querySelector('[ambient-particles]');
+    if (old) old.remove();
+    if (theme.ambientParticles) {
+      const ap = document.createElement('a-entity');
+      const cfg = theme.ambientParticles;
+      ap.setAttribute('ambient-particles', `count: ${cfg.count}; color: ${cfg.color}; color2: ${cfg.color2}; area: ${cfg.area}; height: ${cfg.height}`);
+      apContainer.appendChild(ap);
+    }
   }
 }
 

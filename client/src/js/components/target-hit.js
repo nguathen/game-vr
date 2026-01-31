@@ -65,6 +65,9 @@ AFRAME.registerComponent('target-hit', {
     const type = this.data.targetType;
     const scene = this.el.sceneEl;
 
+    // Notify crosshair of kill
+    document.dispatchEvent(new CustomEvent('crosshair-kill'));
+
     // === 0ms: Simultaneous impact layers ===
 
     // 1) Core white flash
@@ -108,12 +111,18 @@ AFRAME.registerComponent('target-hit', {
       });
     }, 80);
 
-    // === Camera shake + Haptic on kill ===
-    const shakeIntensity = type === 'heavy' ? 0.015 : type === 'bonus' ? 0.012 : 0.008;
-    const shakeDur = type === 'heavy' ? 150 : 100;
+    // === Second shockwave (delayed, larger, fainter) ===
+    setTimeout(() => {
+      this._spawnShockwave(scene, pos, color, true);
+    }, 80);
+
+    // === Camera shake + FOV punch on kill ===
+    const shakeIntensity = type === 'heavy' ? 0.018 : type === 'bonus' ? 0.014 : 0.01;
+    const shakeDur = type === 'heavy' ? 180 : 120;
     document.dispatchEvent(new CustomEvent('camera-shake', {
       detail: { intensity: shakeIntensity, duration: shakeDur },
     }));
+    document.dispatchEvent(new CustomEvent('camera-fov-punch'));
 
     const hm = window.__hapticManager;
     if (hm) {
@@ -125,6 +134,9 @@ AFRAME.registerComponent('target-hit', {
       else hm.hitStandard();
     }
 
+    // === Barrier & platform reactive pulse ===
+    this._pulseEnvironment(color);
+
     // === 350ms: Cleanup ===
     setTimeout(() => {
       this.el.emit('destroyed', { damage, color, position: { x: pos.x, y: pos.y, z: pos.z } });
@@ -134,35 +146,41 @@ AFRAME.registerComponent('target-hit', {
     }, 350);
   },
 
-  _spawnShockwave(scene, pos, color) {
+  _spawnShockwave(scene, pos, color, isSecondary) {
     const ring = document.createElement('a-ring');
     ring.setAttribute('position', `${pos.x} ${pos.y} ${pos.z}`);
     ring.setAttribute('radius-inner', '0.01');
     ring.setAttribute('radius-outer', '0.1');
-    ring.setAttribute('material', `shader: flat; color: ${color}; opacity: 0.8; transparent: true; side: double`);
+
+    const opacity = isSecondary ? 0.4 : 0.8;
+    const maxOuter = isSecondary ? 3.5 : 2.5;
+    const maxInner = isSecondary ? 3.0 : 2.0;
+    const dur = isSecondary ? 450 : 350;
+
+    ring.setAttribute('material', `shader: flat; color: ${color}; opacity: ${opacity}; transparent: true; side: double`);
     ring.setAttribute('look-at', '[camera]');
     ring.setAttribute('shadow', 'cast: false; receive: false');
 
     ring.setAttribute('animation__expand', {
       property: 'geometry.radiusOuter',
-      from: 0.1, to: 1.8,
-      dur: 300, easing: 'easeOutQuad',
+      from: 0.1, to: maxOuter,
+      dur, easing: 'easeOutQuad',
     });
     ring.setAttribute('animation__expandInner', {
       property: 'geometry.radiusInner',
-      from: 0.01, to: 1.5,
-      dur: 300, easing: 'easeOutQuad',
+      from: 0.01, to: maxInner,
+      dur, easing: 'easeOutQuad',
     });
     ring.setAttribute('animation__fade', {
       property: 'material.opacity',
-      from: 0.8, to: 0,
-      dur: 300, easing: 'easeOutQuad',
+      from: opacity, to: 0,
+      dur: dur - 50, easing: 'easeOutQuad',
     });
 
     scene.appendChild(ring);
     setTimeout(() => {
       if (ring.parentNode) ring.parentNode.removeChild(ring);
-    }, 350);
+    }, dur);
   },
 
   _spawnFlashLight(scene, pos, color) {
@@ -204,6 +222,25 @@ AFRAME.registerComponent('target-hit', {
     setTimeout(() => {
       if (orb.parentNode) orb.parentNode.removeChild(orb);
     }, 200);
+  },
+
+  _pulseEnvironment(color) {
+    // Pulse nearest barrier
+    const barriers = document.querySelectorAll('.arena-barrier');
+    barriers.forEach(b => {
+      b.setAttribute('animation__pulse', {
+        property: 'material.opacity', from: 0.12, to: 0.03,
+        dur: 300, easing: 'easeOutQuad',
+      });
+    });
+    // Pulse platform edge glow
+    const edges = document.querySelectorAll('.platform-edge');
+    edges.forEach(e => {
+      e.setAttribute('animation__hitpulse', {
+        property: 'material.opacity', from: 0.9, to: 0.3,
+        dur: 400, easing: 'easeOutQuad',
+      });
+    });
   },
 
   _spawnParticles(color, pos) {

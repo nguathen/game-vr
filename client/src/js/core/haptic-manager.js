@@ -7,15 +7,42 @@ class HapticManager {
     if (scale === 0) return;
 
     const scaledIntensity = Math.min(intensity * scale, 1.0);
-    ['left-hand', 'right-hand'].forEach(id => {
-      const el = document.getElementById(id);
-      const tracked = el?.components?.['oculus-touch-controls']
-        || el?.components?.['tracked-controls'];
-      if (tracked?.controller?.gamepad?.hapticActuators?.[0]) {
+
+    // Strategy 1: WebXR inputSources (Quest Browser — most reliable)
+    const scene = document.getElementById('scene');
+    const xrSession = scene?.xrSession       // A-Frame 1.4+
+      || scene?.renderer?.xr?.getSession?.(); // Three.js fallback
+    if (xrSession?.inputSources) {
+      for (const src of xrSession.inputSources) {
+        const gp = src.gamepad;
+        if (!gp) continue;
         try {
-          tracked.controller.gamepad.hapticActuators[0].pulse(scaledIntensity, duration);
+          if (gp.hapticActuators?.[0]) {
+            gp.hapticActuators[0].pulse(scaledIntensity, duration);
+          } else if (gp.vibrationActuator) {
+            gp.vibrationActuator.playEffect('dual-rumble', {
+              duration, strongMagnitude: scaledIntensity, weakMagnitude: scaledIntensity * 0.5,
+            });
+          }
         } catch { /* ignore */ }
       }
+      return;
+    }
+
+    // Strategy 2: A-Frame tracked controller components (desktop VR / older runtimes)
+    ['left-hand', 'right-hand'].forEach(id => {
+      const el = document.getElementById(id);
+      if (!el?.components) return;
+      const comp = el.components['oculus-touch-controls']
+        || el.components['tracked-controls-webxr']
+        || el.components['tracked-controls'];
+      const gp = comp?.controller?.gamepad;
+      if (!gp) return;
+      try {
+        if (gp.hapticActuators?.[0]) {
+          gp.hapticActuators[0].pulse(scaledIntensity, duration);
+        }
+      } catch { /* ignore */ }
     });
   }
 

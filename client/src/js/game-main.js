@@ -250,11 +250,16 @@ function _initRound(themeParam) {
         document.dispatchEvent(new CustomEvent('camera-shake', { detail: { intensity, duration: dur } }));
       }
       _hudCombo.setAttribute('color', color);
+
+      // HUD pulse — frequency increases with combo
+      const pulseDur = combo >= 15 ? 200 : combo >= 10 ? 300 : combo >= 5 ? 500 : 700;
       _hudCombo.setAttribute('animation__pop', {
         property: 'scale',
         from: '0.5 0.5 0.5', to: '0.4 0.4 0.4',
-        dur: 200, easing: 'easeOutElastic',
+        dur: pulseDur, easing: 'easeOutElastic',
+        loop: true, dir: 'alternate',
       });
+
       // Shake at x10+
       if (combo >= 10) {
         _hudCombo.setAttribute('animation__shake', {
@@ -268,8 +273,24 @@ function _initRound(themeParam) {
           _spawnEventParticles(_scene, { x: cp.x, y: cp.y, z: cp.z - 2 }, 5, color);
         }
       }
+
+      // Bass drop zoom-out snap at milestone combos (x5, x10, x15)
+      if (combo === 5 || combo === 10 || combo === 15) {
+        const zoomDur = combo >= 15 ? 300 : combo >= 10 ? 250 : 200;
+        document.dispatchEvent(new CustomEvent('camera-impact-zoom', { detail: { duration: zoomDur } }));
+        hapticManager.combo(combo);
+      }
+
+      // Combo vignette overlay
+      _updateComboVignette(combo);
+
+      // Arena barrier glow intensifies with combo
+      _updateBarrierComboGlow(combo);
     } else {
       _hudCombo.setAttribute('value', '');
+      _hudCombo.removeAttribute('animation__pop');
+      _updateComboVignette(0);
+      _updateBarrierComboGlow(0);
     }
   };
 
@@ -651,6 +672,39 @@ async function endGame() {
       if (goTitle) { goTitle.setAttribute('value', 'GAME OVER'); goTitle.setAttribute('color', '#ff4444'); }
       if (_onReturnToMenu) _onReturnToMenu();
     }, 4000);
+  }
+}
+
+// === Combo Juice Helpers (TASK-227) ===
+
+function _updateComboVignette(combo) {
+  let vignette = document.getElementById('combo-vignette');
+  if (!vignette) {
+    vignette = document.createElement('div');
+    vignette.id = 'combo-vignette';
+    vignette.className = 'combo-vignette';
+    document.body.appendChild(vignette);
+  }
+  // Remove all combo classes
+  vignette.classList.remove('active', 'combo-low', 'combo-mid', 'combo-high');
+
+  if (combo >= 10) {
+    vignette.classList.add('active', 'combo-high');
+  } else if (combo >= 5) {
+    vignette.classList.add('active', 'combo-mid');
+  } else if (combo >= 3) {
+    vignette.classList.add('active', 'combo-low');
+  }
+}
+
+function _updateBarrierComboGlow(combo) {
+  const barriers = document.querySelectorAll('.arena-barrier');
+  if (combo >= 10) {
+    barriers.forEach(b => b.setAttribute('material', 'opacity', 0.06));
+  } else if (combo >= 5) {
+    barriers.forEach(b => b.setAttribute('material', 'opacity', 0.035));
+  } else {
+    barriers.forEach(b => b.setAttribute('material', 'opacity', 0.015));
   }
 }
 

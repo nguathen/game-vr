@@ -43,11 +43,49 @@ class AudioManager {
     return 0.9 + Math.random() * 0.2;
   }
 
-  playHit() {
+  /**
+   * Create a PannerNode for 3D positional audio.
+   * @param {{x:number,y:number,z:number}} pos - world position
+   */
+  _createPanner(pos) {
+    const ctx = this._getCtx();
+    const panner = ctx.createPanner();
+    panner.panningModel = 'HRTF';
+    panner.distanceModel = 'inverse';
+    panner.refDistance = 2;
+    panner.maxDistance = 30;
+    panner.rolloffFactor = 1.5;
+    panner.setPosition(pos.x || 0, pos.y || 0, pos.z || 0);
+    panner.connect(this.destination);
+    return panner;
+  }
+
+  /** Update listener position from camera. Call from game tick. */
+  updateListener(pos, fwd, up) {
+    const ctx = this._getCtx();
+    const l = ctx.listener;
+    if (l.positionX) {
+      l.positionX.value = pos.x;
+      l.positionY.value = pos.y;
+      l.positionZ.value = pos.z;
+      l.forwardX.value = fwd.x;
+      l.forwardY.value = fwd.y;
+      l.forwardZ.value = fwd.z;
+      l.upX.value = up.x;
+      l.upY.value = up.y;
+      l.upZ.value = up.z;
+    } else {
+      l.setPosition(pos.x, pos.y, pos.z);
+      l.setOrientation(fwd.x, fwd.y, fwd.z, up.x, up.y, up.z);
+    }
+  }
+
+  playHit(pos) {
     if (!this._enabled) return;
     const ctx = this._getCtx();
     const now = ctx.currentTime;
     const pv = this._pitchVar();
+    const dest = pos ? this._createPanner(pos) : this.destination;
 
     // Short bright "ping"
     const osc = ctx.createOscillator();
@@ -57,7 +95,7 @@ class AudioManager {
     osc.frequency.exponentialRampToValueAtTime(1760 * pv, now + 0.05);
     gain.gain.setValueAtTime(0.3, now);
     gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
-    osc.connect(gain).connect(this.destination);
+    osc.connect(gain).connect(dest);
     osc.start(now);
     osc.stop(now + 0.15);
   }
@@ -99,10 +137,11 @@ class AudioManager {
     osc.stop(now + 0.2);
   }
 
-  playSpawn() {
+  playSpawn(pos) {
     if (!this._enabled) return;
     const ctx = this._getCtx();
     const now = ctx.currentTime;
+    const dest = pos ? this._createPanner(pos) : this.destination;
 
     // Soft "pop"
     const osc = ctx.createOscillator();
@@ -112,7 +151,7 @@ class AudioManager {
     osc.frequency.exponentialRampToValueAtTime(600, now + 0.06);
     gain.gain.setValueAtTime(0.1, now);
     gain.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
-    osc.connect(gain).connect(this.destination);
+    osc.connect(gain).connect(dest);
     osc.start(now);
     osc.stop(now + 0.1);
   }
