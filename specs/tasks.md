@@ -12,7 +12,7 @@
 |--------|-------|
 | In Progress | 0 |
 | Pending | 1 |
-| Completed | 54 |
+| Completed | 55 |
 
 > V1 (TASK-010~020), V2 Phase 1-4 (TASK-101~120), Cleanup (TASK-122~129),
 > Build/Deploy (TASK-130~132), Power-Ups (TASK-133), Slow-Mo (TASK-134),
@@ -62,6 +62,7 @@ Targets now spawn in extreme vertical positions that force physical movement: **
 
 | Task | Title | Completed |
 |------|-------|-----------|
+| TASK-255 | Scare Balls — Dodge Reflex | 2026-01-31 |
 | TASK-250 | Incoming Projectiles — Dodge or Die | 2026-01-31 |
 | TASK-251 | Charging Targets — Turn & Track 360° | 2026-01-31 |
 | TASK-253 | Danger Zones — Arena Repositioning | 2026-01-31 |

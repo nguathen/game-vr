@@ -712,6 +712,28 @@ class AudioManager {
     osc.stop(now + 0.12);
   }
 
+  /** Scare ball whoosh — fast white noise burst (TASK-255) */
+  playScareWhoosh(pos) {
+    if (!this._enabled) return;
+    const ctx = this._getCtx();
+    const now = ctx.currentTime;
+    const dest = pos ? this._createPanner(pos) : this.destination;
+
+    // Fast rising noise burst
+    const bufSize = Math.floor(ctx.sampleRate * 0.2);
+    const buf = ctx.createBuffer(1, bufSize, ctx.sampleRate);
+    const data = buf.getChannelData(0);
+    for (let i = 0; i < bufSize; i++) data[i] = (Math.random() * 2 - 1) * 0.5;
+    const noise = ctx.createBufferSource();
+    noise.buffer = buf;
+    const nGain = ctx.createGain();
+    nGain.gain.setValueAtTime(0.001, now);
+    nGain.gain.exponentialRampToValueAtTime(0.25, now + 0.08);
+    nGain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
+    noise.connect(nGain).connect(dest);
+    noise.start(now);
+  }
+
   playSelect() {
     if (!this._enabled) return;
     const ctx = this._getCtx();

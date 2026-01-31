@@ -86,6 +86,12 @@ class TargetSystem {
 
     // Callback for damage events
     this._onPlayerDamage = null;
+
+    // Scare balls (TASK-255)
+    this._scareBalls = new Set();
+    this._scareBallTimer = null;
+    this._scareBallTick = null;
+    this._lastScareBallTime = 0;
   }
 
   set onComboChange(fn) { this._onComboChange = fn; }
@@ -138,6 +144,11 @@ class TargetSystem {
     this._lastDangerZoneTime = Date.now();
     this._dangerZoneTimer = setInterval(() => this._trySpawnDangerZone(), 1000);
     this._dangerZoneTick = setInterval(() => this._updateDangerZones(), 500);
+
+    // Scare ball timer (TASK-255)
+    this._lastScareBallTime = Date.now() + 10000; // grace period at start
+    this._scareBallTimer = setInterval(() => this._tryLaunchScareBall(), 1000);
+    this._scareBallTick = setInterval(() => this._updateScareBalls(), 30);
   }
 
   stop() {
@@ -178,6 +189,12 @@ class TargetSystem {
     if (this._dangerZoneTick) { clearInterval(this._dangerZoneTick); this._dangerZoneTick = null; }
     this._dangerZones.forEach(z => { if (z.el?.parentNode) z.el.parentNode.removeChild(z.el); });
     this._dangerZones.clear();
+
+    // Cleanup scare balls (TASK-255)
+    if (this._scareBallTimer) { clearInterval(this._scareBallTimer); this._scareBallTimer = null; }
+    if (this._scareBallTick) { clearInterval(this._scareBallTick); this._scareBallTick = null; }
+    this._scareBalls.forEach(b => { if (b.el?.parentNode) b.el.parentNode.removeChild(b.el); });
+    this._scareBalls.clear();
 
     this._clearAll();
   }
@@ -1244,6 +1261,171 @@ class TargetSystem {
         setTimeout(() => { if (zone.el.parentNode) zone.el.parentNode.removeChild(zone.el); }, 550);
       }
     });
+  }
+
+  // === TASK-255: Scare Balls — Dodge Reflex ===
+
+  _tryLaunchScareBall() {
+    if (!this._running) return;
+    const now = Date.now();
+    // Interval scales with combo: base 15-25s, at combo 15+ → 12-18s
+    const combo = this._combo;
+    const minInterval = combo >= 15 ? 12000 : 15000;
+    const maxInterval = combo >= 15 ? 18000 : 25000;
+    const interval = this._scareBallInterval || (minInterval + Math.random() * (maxInterval - minInterval));
+    if (now - this._lastScareBallTime < interval) return;
+    if (this._scareBalls.size >= 2) return;
+
+    this._lastScareBallTime = now;
+    this._scareBallInterval = minInterval + Math.random() * (maxInterval - minInterval);
+    this._launchScareBall();
+  }
+
+  _launchScareBall() {
+    const scene = this._container.sceneEl || this._container.closest('a-scene');
+    if (!scene) return;
+    const cam = document.getElementById('camera');
+    if (!cam) return;
+
+    const camPos = new THREE.Vector3();
+    cam.object3D.getWorldPosition(camPos);
+
+    // Pick random arena edge
+    const edge = Math.floor(Math.random() * 4);
+    let sx, sz;
+    switch (edge) {
+      case 0: sx = -14; sz = (Math.random() - 0.5) * 26; break; // left
+      case 1: sx = 14;  sz = (Math.random() - 0.5) * 26; break; // right
+      case 2: sx = (Math.random() - 0.5) * 26; sz = -14; break; // front
+      default: sx = (Math.random() - 0.5) * 26; sz = 14; break;  // back
+    }
+    const sy = camPos.y + 0.1; // aim at face height
+
+    // Direction toward player face
+    const dir = new THREE.Vector3(camPos.x - sx, camPos.y + 0.1 - sy, camPos.z - sz).normalize();
+    const speed = 8 + Math.random() * 2; // 8-10 units/s
+    const radius = 0.15 + Math.random() * 0.1; // 0.15-0.25
+
+    // Neon colors
+    const neonColors = ['#00ffff', '#ff00ff', '#ffff00', '#00ff88', '#ff4488'];
+    const color = neonColors[Math.floor(Math.random() * neonColors.length)];
+
+    // Audio whoosh telegraph (0.3s before visual arrives — play from origin)
+    audioManager.playScareWhoosh({ x: sx, y: sy, z: sz });
+
+    // Create ball after short delay (0.3s whoosh)
+    setTimeout(() => {
+      if (!this._running) return;
+
+      const el = document.createElement('a-sphere');
+      el.setAttribute('radius', String(radius));
+      el.setAttribute('position', `${sx} ${sy} ${sz}`);
+      el.setAttribute('material', `shader: flat; color: ${color}; opacity: 0.9; transparent: true`);
+      el.setAttribute('shadow', 'cast: false; receive: false');
+
+      // Glow light on ball
+      const light = document.createElement('a-entity');
+      light.setAttribute('light', `type: point; color: ${color}; intensity: 1.5; distance: 3; decay: 2`);
+      el.appendChild(light);
+
+      // Comet tail: 3 trailing spheres
+      for (let i = 1; i <= 3; i++) {
+        const tail = document.createElement('a-sphere');
+        tail.setAttribute('radius', String(radius * (1 - i * 0.25)));
+        tail.setAttribute('material', `shader: flat; color: ${color}; opacity: ${0.5 - i * 0.12}; transparent: true`);
+        tail.setAttribute('position', `${-dir.x * i * 0.25} ${-dir.y * i * 0.25} ${-dir.z * i * 0.25}`);
+        el.appendChild(tail);
+      }
+
+      scene.appendChild(el);
+
+      const ball = {
+        el,
+        pos: new THREE.Vector3(sx, sy, sz),
+        dir,
+        speed,
+        spawnTime: Date.now(),
+        nearMissTriggered: false,
+      };
+      this._scareBalls.add(ball);
+    }, 300);
+  }
+
+  _updateScareBalls() {
+    if (!this._running) return;
+    const cam = document.getElementById('camera');
+    if (!cam) return;
+    const camPos = new THREE.Vector3();
+    cam.object3D.getWorldPosition(camPos);
+
+    const dt = 0.03; // 30ms tick
+    const toRemove = [];
+
+    this._scareBalls.forEach(b => {
+      b.pos.x += b.dir.x * b.speed * dt;
+      b.pos.y += b.dir.y * b.speed * dt;
+      b.pos.z += b.dir.z * b.speed * dt;
+      b.el.setAttribute('position', `${b.pos.x} ${b.pos.y} ${b.pos.z}`);
+
+      const dist = b.pos.distanceTo(camPos);
+
+      // Hit check: ball hits player head (< 0.3m)
+      if (dist < 0.3) {
+        toRemove.push(b);
+        this._onScareBallHit(b);
+        return;
+      }
+
+      // Near-miss: passed close (< 0.5m) but moving away
+      if (!b.nearMissTriggered && dist < 0.5) {
+        // Check if ball is moving away (dot product of dir and ball→cam is negative)
+        const toCam = new THREE.Vector3().subVectors(camPos, b.pos);
+        if (toCam.dot(b.dir) < 0) {
+          b.nearMissTriggered = true;
+          this._onScareBallDodge(b);
+        }
+      }
+
+      // Auto-remove after 2s or if far away
+      if (Date.now() - b.spawnTime > 2000 || dist > 20) {
+        toRemove.push(b);
+      }
+    });
+
+    toRemove.forEach(b => {
+      this._scareBalls.delete(b);
+      if (b.el?.parentNode) {
+        b.el.setAttribute('animation__fade', { property: 'material.opacity', to: 0, dur: 100 });
+        setTimeout(() => { if (b.el.parentNode) b.el.parentNode.removeChild(b.el); }, 150);
+      }
+    });
+  }
+
+  _onScareBallHit(ball) {
+    // Screen flash white (scare effect, no damage)
+    const overlay = document.getElementById('transition');
+    if (overlay) {
+      overlay.style.background = 'rgba(255,255,255,0.6)';
+      overlay.style.opacity = '1';
+      overlay.style.pointerEvents = 'none';
+      setTimeout(() => { overlay.style.opacity = '0'; }, 150);
+      setTimeout(() => { overlay.style.background = ''; }, 300);
+    }
+
+    // Strong haptic burst
+    window.__hapticManager?.pulse(0.8, 100);
+
+    // Camera shake
+    document.dispatchEvent(new CustomEvent('camera-shake', { detail: { intensity: 0.015, duration: 150 } }));
+  }
+
+  _onScareBallDodge(ball) {
+    // "DODGE!" popup + bonus points via event
+    const pos = { x: ball.pos.x, y: ball.pos.y, z: ball.pos.z };
+    document.dispatchEvent(new CustomEvent('scare-dodge', { detail: { pos, points: 3 } }));
+
+    // Light haptic feedback
+    window.__hapticManager?.pulse(0.3, 40);
   }
 
   // Also: heavy/boss targets fire projectiles periodically

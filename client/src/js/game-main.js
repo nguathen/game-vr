@@ -107,6 +107,20 @@ function _initOnce() {
     }
   });
 
+  // Scare ball dodge bonus (TASK-255)
+  document.addEventListener('scare-dodge', (e) => {
+    if (gameManager.state !== GameState.PLAYING) return;
+    const pts = e.detail?.points || 3;
+    scoreManager.add(pts);
+    if (e.detail?.pos && _scene) {
+      const pos = e.detail.pos;
+      const el = document.createElement('a-entity');
+      el.setAttribute('position', `${pos.x} ${pos.y + 0.3} ${pos.z}`);
+      el.setAttribute('damage-number', `text: DODGE! +${pts}; color: #00ffff`);
+      _scene.appendChild(el);
+    }
+  });
+
   // Slow-motion overlay handler
   document.addEventListener('slow-motion', (e) => {
     const settings = getSettings();
