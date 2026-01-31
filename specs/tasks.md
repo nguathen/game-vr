@@ -12,7 +12,7 @@
 |--------|-------|
 | In Progress | 0 |
 | Pending | 1 |
-| Completed | 55 |
+| Completed | 58 |
 
 > V1 (TASK-010~020), V2 Phase 1-4 (TASK-101~120), Cleanup (TASK-122~129),
 > Build/Deploy (TASK-130~132), Power-Ups (TASK-133), Slow-Mo (TASK-134),
@@ -24,6 +24,7 @@
 > **V9 Effects & Interaction Polish (TASK-234~236)** — completed.
 > **V10 Immersion Upgrade (TASK-240~244)** — completed.
 > **V11 Physical Movement Upgrade (TASK-250~254)** — 4/5 completed (TASK-252 pending).
+> **V12 Full-Body Engagement (TASK-256~258)** — completed.
 
 ---
 
@@ -62,6 +63,9 @@ Targets now spawn in extreme vertical positions that force physical movement: **
 
 | Task | Title | Completed |
 |------|-------|-----------|
+| TASK-256 | Punch Targets — Melee Strike | 2026-01-31 |
+| TASK-257 | Rhythm Targets — Beat-Sync Shooting | 2026-01-31 |
+| TASK-258 | Wall Lean — Dodge Laser Sweeps | 2026-01-31 |
 | TASK-255 | Scare Balls — Dodge Reflex | 2026-01-31 |
 | TASK-250 | Incoming Projectiles — Dodge or Die | 2026-01-31 |
 | TASK-251 | Charging Targets — Turn & Track 360° | 2026-01-31 |

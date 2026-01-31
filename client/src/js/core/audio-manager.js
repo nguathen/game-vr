@@ -734,6 +734,117 @@ class AudioManager {
     noise.start(now);
   }
 
+  /** Punch impact — bass thud + crunch (TASK-256) */
+  playPunchImpact(pos) {
+    if (!this._enabled) return;
+    const ctx = this._getCtx();
+    const now = ctx.currentTime;
+    const dest = pos ? this._createPanner(pos) : this.destination;
+
+    // Deep bass thud
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(100, now);
+    osc.frequency.exponentialRampToValueAtTime(40, now + 0.15);
+    gain.gain.setValueAtTime(0.35, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
+    osc.connect(gain).connect(dest);
+    osc.start(now);
+    osc.stop(now + 0.2);
+
+    // Crunch noise burst
+    const bufSize = Math.floor(ctx.sampleRate * 0.08);
+    const buf = ctx.createBuffer(1, bufSize, ctx.sampleRate);
+    const data = buf.getChannelData(0);
+    for (let i = 0; i < bufSize; i++) data[i] = (Math.random() * 2 - 1) * 0.3;
+    const noise = ctx.createBufferSource();
+    noise.buffer = buf;
+    const nGain = ctx.createGain();
+    nGain.gain.setValueAtTime(0.2, now);
+    nGain.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
+    noise.connect(nGain).connect(dest);
+    noise.start(now);
+  }
+
+  /** Rhythm PERFECT hit chime (TASK-257) */
+  playRhythmPerfect(pos) {
+    if (!this._enabled) return;
+    const ctx = this._getCtx();
+    const now = ctx.currentTime;
+    const dest = pos ? this._createPanner(pos) : this.destination;
+
+    // Bright chord: root + major third + fifth
+    [880, 1100, 1320].forEach((freq, i) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freq, now);
+      gain.gain.setValueAtTime(0.12, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+      osc.connect(gain).connect(dest);
+      osc.start(now);
+      osc.stop(now + 0.25);
+    });
+  }
+
+  /** Laser sweep rising synth tone (TASK-258) */
+  playLaserSweep() {
+    if (!this._enabled) return;
+    const ctx = this._getCtx();
+    const now = ctx.currentTime;
+
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(150, now);
+    osc.frequency.exponentialRampToValueAtTime(600, now + 2.0);
+    gain.gain.setValueAtTime(0.08, now);
+    gain.gain.linearRampToValueAtTime(0.15, now + 1.5);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 2.5);
+    osc.connect(gain).connect(this.destination);
+    osc.start(now);
+    osc.stop(now + 2.5);
+  }
+
+  /** Laser sweep warning alarm (TASK-258) */
+  playLaserWarn() {
+    if (!this._enabled) return;
+    const ctx = this._getCtx();
+    const now = ctx.currentTime;
+
+    for (let i = 0; i < 4; i++) {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'square';
+      const t = now + i * 0.2;
+      osc.frequency.setValueAtTime(800, t);
+      gain.gain.setValueAtTime(0.1, t);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.1);
+      osc.connect(gain).connect(this.destination);
+      osc.start(t);
+      osc.stop(t + 0.1);
+    }
+  }
+
+  /** Laser hit zap (TASK-258) */
+  playLaserHit() {
+    if (!this._enabled) return;
+    const ctx = this._getCtx();
+    const now = ctx.currentTime;
+
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(400, now);
+    osc.frequency.exponentialRampToValueAtTime(100, now + 0.15);
+    gain.gain.setValueAtTime(0.25, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
+    osc.connect(gain).connect(this.destination);
+    osc.start(now);
+    osc.stop(now + 0.2);
+  }
+
   playSelect() {
     if (!this._enabled) return;
     const ctx = this._getCtx();

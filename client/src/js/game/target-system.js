@@ -92,6 +92,24 @@ class TargetSystem {
     this._scareBallTimer = null;
     this._scareBallTick = null;
     this._lastScareBallTime = 0;
+
+    // Punch targets (TASK-256)
+    this._punchTick = null;
+    this._lastControllerPos = { right: null, left: null };
+    this._controllerVelocity = { right: 0, left: 0 };
+
+    // Rhythm targets (TASK-257)
+    this._rhythmMode = false;
+    this._beatPhase = 0;
+    this._beatTimer = null;
+    this._lastBeatTime = 0;
+    this._bpm = 120;
+
+    // Laser sweeps (TASK-258)
+    this._laserSweeps = new Set();
+    this._laserSweepTimer = null;
+    this._laserSweepTick = null;
+    this._lastLaserSweepTime = 0;
   }
 
   set onComboChange(fn) { this._onComboChange = fn; }
@@ -149,6 +167,21 @@ class TargetSystem {
     this._lastScareBallTime = Date.now() + 10000; // grace period at start
     this._scareBallTimer = setInterval(() => this._tryLaunchScareBall(), 1000);
     this._scareBallTick = setInterval(() => this._updateScareBalls(), 30);
+
+    // Punch target detection tick (TASK-256)
+    this._lastControllerPos = { right: null, left: null };
+    this._controllerVelocity = { right: 0, left: 0 };
+    this._punchTick = setInterval(() => this._updatePunchDetection(), 30);
+
+    // Rhythm beat tick (TASK-257)
+    this._rhythmMode = false;
+    this._lastBeatTime = Date.now();
+    this._beatTimer = setInterval(() => this._updateRhythmBeat(), 50);
+
+    // Laser sweep timer (TASK-258)
+    this._lastLaserSweepTime = Date.now() + 15000; // grace period
+    this._laserSweepTimer = setInterval(() => this._tryLaunchLaserSweep(), 1000);
+    this._laserSweepTick = setInterval(() => this._updateLaserSweeps(), 30);
   }
 
   stop() {
@@ -196,6 +229,19 @@ class TargetSystem {
     this._scareBalls.forEach(b => { if (b.el?.parentNode) b.el.parentNode.removeChild(b.el); });
     this._scareBalls.clear();
 
+    // Cleanup punch detection (TASK-256)
+    if (this._punchTick) { clearInterval(this._punchTick); this._punchTick = null; }
+
+    // Cleanup rhythm (TASK-257)
+    if (this._beatTimer) { clearInterval(this._beatTimer); this._beatTimer = null; }
+    this._rhythmMode = false;
+
+    // Cleanup laser sweeps (TASK-258)
+    if (this._laserSweepTimer) { clearInterval(this._laserSweepTimer); this._laserSweepTimer = null; }
+    if (this._laserSweepTick) { clearInterval(this._laserSweepTick); this._laserSweepTick = null; }
+    this._laserSweeps.forEach(s => { if (s.el?.parentNode) s.el.parentNode.removeChild(s.el); });
+    this._laserSweeps.clear();
+
     this._clearAll();
   }
 
@@ -221,8 +267,20 @@ class TargetSystem {
     const typeId = this._pickTargetType();
     const type = TARGET_TYPES[typeId];
 
+    // TASK-256: 15% chance to spawn melee target (standard type only, not boss mode)
+    if (!this._bossMode && typeId === 'standard' && Math.random() < 0.15) {
+      this._spawnMeleeTarget();
+      return;
+    }
+
     // 360-degree spawn position (pick early for telegraph)
     const spawnPos = this._pick360Position();
+
+    // TASK-257: rhythm mode overrides spawn position timing
+    if (this._rhythmMode && typeId !== 'decoy') {
+      spawnPos._rhythmTarget = true;
+      spawnPos._beatSpawnTime = Date.now();
+    }
 
     // Telegraph effect: show pre-spawn visual 0.5s before actual spawn
     this._spawnTelegraph(spawnPos, typeId);
@@ -468,6 +526,32 @@ class TargetSystem {
     this._targets.add(el);
     audioManager.playSpawn({ x, y, z });
 
+    // TASK-257: Rhythm timing ring for rhythm-mode targets
+    if (spawnPos._rhythmTarget) {
+      el._rhythmTarget = true;
+      el._beatSpawnTime = spawnPos._beatSpawnTime;
+      const beatDuration = 60000 / this._bpm;
+      const timingRing = document.createElement('a-ring');
+      timingRing.setAttribute('radius-inner', '0.78');
+      timingRing.setAttribute('radius-outer', '0.8');
+      timingRing.setAttribute('material', 'shader: flat; color: #44ff44; opacity: 0.6; transparent: true');
+      timingRing.setAttribute('animation__shrink', {
+        property: 'radius-inner', from: 0.78, to: type.radius,
+        dur: beatDuration, easing: 'linear',
+      });
+      timingRing.setAttribute('animation__shrink2', {
+        property: 'radius-outer', from: 0.8, to: type.radius + 0.02,
+        dur: beatDuration, easing: 'linear',
+      });
+      // Color transition green → yellow → red
+      timingRing.setAttribute('animation__color', {
+        property: 'material.color', from: '#44ff44', to: '#ff4444',
+        dur: beatDuration, easing: 'linear',
+      });
+      el.appendChild(timingRing);
+      el._timingRing = timingRing;
+    }
+
     // Spatial audio hum (max 8 concurrent)
     if (this._targetHums.size < 8) {
       const hum = audioManager.createTargetHum({ x, y, z }, typeId);
@@ -508,7 +592,27 @@ class TargetSystem {
 
       const comboMultiplier = Math.min(this._combo, 5);
       const powerUpMultiplier = powerUpManager.getMultiplier();
-      const points = basePoints * comboMultiplier * damage * powerUpMultiplier;
+
+      // TASK-257: Rhythm timing bonus
+      let rhythmMultiplier = 1;
+      let rhythmGrade = '';
+      if (el._rhythmTarget && el._beatSpawnTime) {
+        const beatDuration = 60000 / this._bpm;
+        const elapsed = Date.now() - el._beatSpawnTime;
+        const beatError = Math.abs((elapsed / beatDuration) - 1);
+        if (beatError < 0.1) {
+          rhythmMultiplier = 3;
+          rhythmGrade = 'PERFECT';
+          audioManager.playRhythmPerfect(pos);
+        } else if (beatError < 0.25) {
+          rhythmMultiplier = 2;
+          rhythmGrade = 'GOOD';
+        } else {
+          rhythmGrade = 'OK';
+        }
+      }
+
+      const points = basePoints * comboMultiplier * damage * powerUpMultiplier * rhythmMultiplier;
       scoreManager.add(points);
       this._onComboChange?.(this._combo);
 
@@ -535,8 +639,9 @@ class TargetSystem {
       // Damage number
       const comboText = comboMultiplier > 1 ? ` x${comboMultiplier}` : '';
       const puText = powerUpMultiplier > 1 ? ' 2X' : '';
-      const color = el._targetType === 'bonus' ? '#ffd700' : el._targetType === 'powerup' ? '#00ffaa' : comboMultiplier > 1 ? '#00d4ff' : '#ffffff';
-      this._spawnDamageNumber(pos, points, color, comboText + puText);
+      const rhythmText = rhythmGrade ? ` ${rhythmGrade}` : '';
+      const color = rhythmGrade === 'PERFECT' ? '#ffff00' : el._targetType === 'bonus' ? '#ffd700' : el._targetType === 'powerup' ? '#00ffaa' : el._isMelee ? '#ff8800' : comboMultiplier > 1 ? '#00d4ff' : '#ffffff';
+      this._spawnDamageNumber(pos, points, color, comboText + puText + rhythmText);
       this._flashScreen('hit');
 
       // Bonus coins
@@ -1426,6 +1531,346 @@ class TargetSystem {
 
     // Light haptic feedback
     window.__hapticManager?.pulse(0.3, 40);
+  }
+
+  // === TASK-256: Punch Targets — Melee Strike ===
+
+  _spawnMeleeTarget() {
+    const cam = document.getElementById('camera');
+    if (!cam) return;
+    const camPos = new THREE.Vector3();
+    cam.object3D.getWorldPosition(camPos);
+    const camDir = new THREE.Vector3();
+    cam.object3D.getWorldDirection(camDir);
+
+    // Spawn 1.0-1.5m in front of player
+    const dist = 1.0 + Math.random() * 0.5;
+    const angleOffset = (Math.random() - 0.5) * 0.8; // ±~23° spread
+    const spawnDir = camDir.clone();
+    spawnDir.applyAxisAngle(new THREE.Vector3(0, 1, 0), angleOffset);
+
+    const x = camPos.x + spawnDir.x * dist;
+    const y = camPos.y + (Math.random() - 0.5) * 0.4; // near head height
+    const z = camPos.z + spawnDir.z * dist;
+
+    const scene = this._container.sceneEl || this._container.closest('a-scene');
+    if (!scene) return;
+
+    const el = document.createElement('a-entity');
+    el.setAttribute('class', 'target');
+    el.setAttribute('geometry', 'primitive: icosahedron; radius: 0.45');
+    el.setAttribute('material', 'color: #ff8800; metalness: 0.8; roughness: 0.2; emissive: #ff6600; emissiveIntensity: 0.8');
+    el.setAttribute('position', `${x} ${y} ${z}`);
+    el.setAttribute('shadow', 'cast: true; receive: false');
+    el.setAttribute('animation__spawn', {
+      property: 'scale', from: '0 0 0', to: '1.5 1.5 1.5',
+      dur: 300, easing: 'easeOutElastic',
+    });
+    el.setAttribute('animation__pulse', {
+      property: 'material.emissiveIntensity', from: 0.5, to: 1.2,
+      dur: 400, loop: true, dir: 'alternate', easing: 'easeInOutSine',
+    });
+
+    // Orange energy ring
+    const ring = document.createElement('a-torus');
+    ring.setAttribute('radius', '0.55');
+    ring.setAttribute('radius-tubular', '0.02');
+    ring.setAttribute('material', 'shader: flat; color: #ff8800; opacity: 0.5; transparent: true');
+    ring.setAttribute('animation__spin', { property: 'rotation', to: '0 360 0', dur: 600, loop: true, easing: 'linear' });
+    el.appendChild(ring);
+
+    // Second ring perpendicular
+    const ring2 = document.createElement('a-torus');
+    ring2.setAttribute('radius', '0.5');
+    ring2.setAttribute('radius-tubular', '0.015');
+    ring2.setAttribute('rotation', '90 0 0');
+    ring2.setAttribute('material', 'shader: flat; color: #ffaa44; opacity: 0.3; transparent: true');
+    ring2.setAttribute('animation__spin', { property: 'rotation', from: '90 0 0', to: '90 360 0', dur: 800, loop: true, easing: 'linear' });
+    el.appendChild(ring2);
+
+    el.setAttribute('target-hit', 'hp: 1; targetType: standard');
+    el._targetType = 'standard';
+    el._targetPoints = 20; // 2× base
+    el._targetCoins = 0;
+    el._isMelee = true;
+
+    el.addEventListener('destroyed', (evt) => {
+      // Melee targets ignore raycaster hits — this only fires from punch
+      const damage = evt?.detail?.damage || 1;
+      const hitPos = evt?.detail?.position || null;
+      this._onTargetHit(el, damage, hitPos);
+    });
+
+    const lifetime = 4000;
+    const expireTimeout = setTimeout(() => {
+      if (this._targets.has(el)) this._removeTarget(el, true);
+    }, lifetime);
+    el._expireTimeout = expireTimeout;
+
+    this._container.appendChild(el);
+    this._targets.add(el);
+    audioManager.playSpawn({ x, y, z });
+  }
+
+  _updatePunchDetection() {
+    if (!this._running) return;
+    const dt = 0.03;
+
+    // Track both controllers
+    ['right', 'left'].forEach(hand => {
+      const handEl = document.getElementById(`${hand}-hand`);
+      if (!handEl?.object3D) return;
+
+      const pos = new THREE.Vector3();
+      handEl.object3D.getWorldPosition(pos);
+      const prev = this._lastControllerPos[hand];
+
+      if (prev) {
+        const velocity = pos.distanceTo(prev) / dt;
+        this._controllerVelocity[hand] = velocity;
+
+        // Check for punch hit on melee targets
+        if (velocity > 2.0) {
+          this._targets.forEach(el => {
+            if (!el._isMelee || !el.parentNode || !el.object3D) return;
+            const tPos = el.object3D.getWorldPosition(new THREE.Vector3());
+            if (pos.distanceTo(tPos) < 0.5) {
+              // Punch hit!
+              this._onPunchHit(el, pos, hand);
+            }
+          });
+        }
+      }
+
+      this._lastControllerPos[hand] = pos.clone();
+    });
+  }
+
+  _onPunchHit(el, hitPos, hand) {
+    const pos = { x: hitPos.x, y: hitPos.y, z: hitPos.z };
+    audioManager.playPunchImpact(pos);
+    window.__hapticManager?.pulse(0.9, 120);
+
+    // Shatter particles
+    const scene = this._container.sceneEl || this._container.closest('a-scene');
+    if (scene) {
+      for (let i = 0; i < 8; i++) {
+        const s = document.createElement('a-icosahedron');
+        s.setAttribute('radius', '0.02');
+        s.setAttribute('material', 'shader: flat; color: #ff8800; opacity: 0.8');
+        s.setAttribute('position', `${pos.x} ${pos.y} ${pos.z}`);
+        const dx = (Math.random() - 0.5) * 2;
+        const dy = (Math.random() - 0.5) * 2;
+        const dz = (Math.random() - 0.5) * 2;
+        s.setAttribute('animation__burst', {
+          property: 'position', to: `${pos.x + dx} ${pos.y + dy} ${pos.z + dz}`,
+          dur: 250, easing: 'easeOutQuad',
+        });
+        s.setAttribute('animation__fade', { property: 'material.opacity', from: 0.8, to: 0, dur: 300 });
+        s.setAttribute('animation__spin', { property: 'rotation', to: `${Math.random()*360} ${Math.random()*360} 0`, dur: 300 });
+        scene.appendChild(s);
+        setTimeout(() => { if (s.parentNode) s.parentNode.removeChild(s); }, 350);
+      }
+    }
+
+    // Camera shake
+    document.dispatchEvent(new CustomEvent('camera-shake', { detail: { intensity: 0.02, duration: 100 } }));
+
+    // Dispatch punch-hit event for score tracking
+    document.dispatchEvent(new CustomEvent('punch-hit', { detail: { pos, points: 20 } }));
+
+    // Trigger target destruction
+    el.dispatchEvent(new CustomEvent('destroyed', { detail: { damage: 1, position: pos } }));
+    if (el.parentNode) el.parentNode.removeChild(el);
+  }
+
+  // === TASK-257: Rhythm Targets — Beat-Sync Shooting ===
+
+  _updateRhythmBeat() {
+    if (!this._running) return;
+
+    // Activate rhythm mode at combo ≥ 10
+    const shouldBeRhythm = this._combo >= 10;
+    if (shouldBeRhythm !== this._rhythmMode) {
+      this._rhythmMode = shouldBeRhythm;
+    }
+
+    if (!this._rhythmMode) return;
+
+    // BPM scales with music intensity
+    this._bpm = this._combo >= 15 ? 140 : 120;
+    const beatDuration = 60000 / this._bpm;
+    const now = Date.now();
+
+    if (now - this._lastBeatTime >= beatDuration) {
+      this._lastBeatTime = now;
+      this._beatPhase = 0;
+      document.dispatchEvent(new CustomEvent('music-beat'));
+    } else {
+      this._beatPhase = (now - this._lastBeatTime) / beatDuration;
+    }
+  }
+
+  // === TASK-258: Wall Lean — Dodge Laser Sweeps ===
+
+  _tryLaunchLaserSweep() {
+    if (!this._running) return;
+    const now = Date.now();
+    const interval = this._bossMode ? 18000 : (25000 - Math.min(this._wave, 20) * 250);
+    if (now - this._lastLaserSweepTime < interval) return;
+    if (this._laserSweeps.size >= 1) return;
+
+    this._lastLaserSweepTime = now;
+    this._launchLaserSweep();
+  }
+
+  _launchLaserSweep() {
+    const scene = this._container.sceneEl || this._container.closest('a-scene');
+    if (!scene) return;
+
+    // Pick variant: 50% head-height (must duck), 50% body-height (must lean)
+    const isHeadHeight = Math.random() < 0.5;
+    const laserY = isHeadHeight
+      ? 1.4 + Math.random() * 0.3  // 1.4-1.7
+      : 0.8 + Math.random() * 0.3; // 0.8-1.1
+
+    const sweepDuration = 2500 + Math.random() * 500; // 2.5-3s
+    const startX = -15;
+    const endX = 15;
+
+    // Telegraph: warning line for 2s
+    const warnEl = document.createElement('a-box');
+    warnEl.setAttribute('width', '30');
+    warnEl.setAttribute('height', '0.02');
+    warnEl.setAttribute('depth', '0.02');
+    warnEl.setAttribute('position', `0 ${laserY} 0`);
+    warnEl.setAttribute('material', 'shader: flat; color: #ff2222; opacity: 0; transparent: true');
+    warnEl.setAttribute('animation__warn', {
+      property: 'material.opacity', from: 0, to: 0.3,
+      dur: 1500, loop: true, dir: 'alternate', easing: 'easeInOutSine',
+    });
+    scene.appendChild(warnEl);
+    audioManager.playLaserWarn();
+
+    setTimeout(() => {
+      if (warnEl.parentNode) warnEl.parentNode.removeChild(warnEl);
+      if (!this._running) return;
+
+      // Launch actual laser beam
+      const el = document.createElement('a-box');
+      el.setAttribute('width', '30');
+      el.setAttribute('height', '0.05');
+      el.setAttribute('depth', '0.05');
+      el.setAttribute('position', `${startX} ${laserY} 0`);
+      el.setAttribute('material', 'shader: flat; color: #ff0000; opacity: 0.8; transparent: true; emissive: #ff0000; emissiveIntensity: 2');
+      el.setAttribute('shadow', 'cast: false; receive: false');
+
+      // Glow light
+      const light = document.createElement('a-entity');
+      light.setAttribute('light', 'type: point; color: #ff0000; intensity: 1.5; distance: 4; decay: 2');
+      el.appendChild(light);
+
+      el.setAttribute('animation__sweep', {
+        property: 'position',
+        from: `${startX} ${laserY} 0`,
+        to: `${endX} ${laserY} 0`,
+        dur: sweepDuration,
+        easing: 'linear',
+      });
+
+      scene.appendChild(el);
+      audioManager.playLaserSweep();
+
+      const sweep = {
+        el,
+        laserY,
+        isHeadHeight,
+        startX,
+        endX,
+        startTime: Date.now(),
+        duration: sweepDuration,
+        hit: false,
+        dodged: false,
+      };
+      this._laserSweeps.add(sweep);
+
+      // Auto-remove after sweep + buffer
+      setTimeout(() => {
+        this._laserSweeps.delete(sweep);
+        if (el.parentNode) el.parentNode.removeChild(el);
+      }, sweepDuration + 200);
+    }, 2000);
+  }
+
+  _updateLaserSweeps() {
+    if (!this._running) return;
+    const cam = document.getElementById('camera');
+    if (!cam) return;
+    const camPos = new THREE.Vector3();
+    cam.object3D.getWorldPosition(camPos);
+
+    this._laserSweeps.forEach(sweep => {
+      if (sweep.hit || sweep.dodged) return;
+
+      const elapsed = Date.now() - sweep.startTime;
+      const progress = elapsed / sweep.duration;
+      if (progress > 1) return;
+
+      // Current laser X position
+      const laserX = sweep.startX + (sweep.endX - sweep.startX) * progress;
+
+      // Check if laser is near player X position (±1.5m window passing through)
+      if (Math.abs(laserX - camPos.x) > 1.5) return;
+
+      // Laser is passing through player area — check dodge
+      if (sweep.isHeadHeight) {
+        // Must duck: dodge if camera Y < laser Y - 0.3
+        if (camPos.y < sweep.laserY - 0.3) {
+          sweep.dodged = true;
+          this._onLaserDodge(sweep);
+        } else if (Math.abs(camPos.y - sweep.laserY) < 0.3) {
+          sweep.hit = true;
+          this._onLaserHit(sweep);
+        }
+      } else {
+        // Body-height: dodge if leaned sideways (|camX - 0| > 0.4 from center)
+        // Use camera X relative to player rig center
+        const rig = document.getElementById('player-rig');
+        const rigX = rig ? rig.object3D.position.x : 0;
+        const lean = Math.abs(camPos.x - rigX);
+        if (lean > 0.4) {
+          sweep.dodged = true;
+          this._onLaserDodge(sweep);
+        } else if (camPos.y < sweep.laserY - 0.3) {
+          // Can also duck under body-height laser
+          sweep.dodged = true;
+          this._onLaserDodge(sweep);
+        } else if (Math.abs(camPos.y - sweep.laserY) < 0.3 && lean < 0.3) {
+          sweep.hit = true;
+          this._onLaserHit(sweep);
+        }
+      }
+    });
+  }
+
+  _onLaserHit(sweep) {
+    audioManager.playLaserHit();
+    window.__hapticManager?.damageTaken();
+    this._flashScreen('miss');
+    this._onPlayerDamage?.('laser');
+    document.dispatchEvent(new CustomEvent('camera-shake', { detail: { intensity: 0.02, duration: 200 } }));
+  }
+
+  _onLaserDodge(sweep) {
+    const pos = { x: 0, y: sweep.laserY, z: -2 };
+    document.dispatchEvent(new CustomEvent('laser-dodge', { detail: { pos, points: 5 } }));
+    window.__hapticManager?.pulse(0.3, 40);
+
+    // Brief slow-mo reward
+    document.dispatchEvent(new CustomEvent('slow-motion', { detail: { active: true } }));
+    setTimeout(() => {
+      document.dispatchEvent(new CustomEvent('slow-motion', { detail: { active: false } }));
+    }, 200);
   }
 
   // Also: heavy/boss targets fire projectiles periodically
