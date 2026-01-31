@@ -117,12 +117,9 @@ AFRAME.registerComponent('target-hit', {
 
     const hm = window.__hapticManager;
     if (hm) {
-      if (type === 'heavy') hm.hitHeavy();
-      else if (type === 'bonus') hm.hitBonus();
-      else if (type === 'decoy') hm.hitDecoy();
-      else if (type === 'speed') hm.hitSpeed();
-      else if (type === 'boss') hm.hitBoss();
-      else hm.hitStandard();
+      const hapticI = type === 'heavy' ? 0.6 : 0.4;
+      const hapticD = type === 'heavy' ? 120 : 80;
+      hm.pulse(hapticI, hapticD);
     }
 
     // === 350ms: Cleanup ===

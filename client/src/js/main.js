@@ -2,11 +2,13 @@ import authManager from './core/auth-manager.js';
 import { GAME_MODES } from './game/game-modes.js';
 import { WEAPONS } from './game/weapon-system.js';
 import { startGame as startGameSession } from './game-main.js';
+import { getThemes } from './game/environment-themes.js';
 import iapManager from './iap/iap-manager.js';
 import { showToast } from './ui/toast.js';
 
 let selectedMode = 'timeAttack';
 let selectedWeapon = 'pistol';
+let selectedTheme = 'cyber';
 
 function refreshRaycasters() {
   ['left-hand', 'right-hand'].forEach(id => {
@@ -14,6 +16,29 @@ function refreshRaycasters() {
     if (el && el.components && el.components.raycaster) {
       el.components.raycaster.refreshObjects();
     }
+  });
+}
+
+// Disable raycasting on child meshes (text, glow) so only the button plane itself is hit
+function disableChildRaycast(el) {
+  const apply = () => {
+    if (!el.object3D) return;
+    const ownMesh = el.getObject3D('mesh');
+    if (!ownMesh) return; // mesh not ready yet, retry via timeout
+    el.object3D.traverse(child => {
+      if (child !== ownMesh && child.isMesh) {
+        child.raycast = () => {};
+      }
+    });
+  };
+  apply();
+  setTimeout(apply, 100);
+  setTimeout(apply, 500);
+  el.querySelectorAll('a-text, a-plane').forEach(child => {
+    child.addEventListener('loaded', () => {
+      const m = child.getObject3D('mesh');
+      if (m && m.isMesh) m.raycast = () => {};
+    });
   });
 }
 
@@ -64,6 +89,7 @@ function createButton(parent, { x, y, width, height, label, value, selected, loc
   plane.appendChild(text);
 
   parent.appendChild(plane);
+  disableChildRaycast(plane);
   return plane;
 }
 
@@ -84,7 +110,7 @@ function buildModeButtons(profile) {
       locked: !unlocked,
     });
     if (unlocked) {
-      btn.addEventListener('click', () => {
+      btn.addEventListener('menuclick', () => {
         selectedMode = mode.id;
         buildModeButtons(profile);
         refreshRaycasters();
@@ -110,9 +136,39 @@ function buildWeaponButtons(profile) {
       locked: !unlocked,
     });
     if (unlocked) {
-      btn.addEventListener('click', () => {
+      btn.addEventListener('menuclick', () => {
         selectedWeapon = weapon.id;
         buildWeaponButtons(profile);
+        refreshRaycasters();
+      });
+    }
+  });
+}
+
+function buildThemeButtons(profile) {
+  const container = document.getElementById('theme-buttons');
+  if (!container) return; // guard against missing HTML element
+  container.innerHTML = '';
+  const themes = Object.values(getThemes());
+  const spacing = 0.85;
+  const btnW = 0.75;
+  const btnH = 0.3;
+  const sx = -(themes.length - 1) * spacing / 2;
+
+  themes.forEach((theme, i) => {
+    const unlocked = profile.level >= (theme.unlockLevel || 1);
+    const label = unlocked ? theme.name : `${theme.name} (Lv.${theme.unlockLevel})`;
+    const btn = createButton(container, {
+      x: sx + i * spacing, y: 0,
+      width: btnW, height: btnH,
+      label, value: theme.id,
+      selected: theme.id === selectedTheme,
+      locked: !unlocked,
+    });
+    if (unlocked) {
+      btn.addEventListener('menuclick', () => {
+        selectedTheme = theme.id;
+        buildThemeButtons(profile);
         refreshRaycasters();
       });
     }
@@ -165,7 +221,7 @@ function switchToGame() {
   startGameSession({
     mode: selectedMode,
     weapon: selectedWeapon,
-    theme: 'cyber',
+    theme: selectedTheme,
     onReturnToMenu: switchToMenu,
   });
 }
@@ -206,6 +262,7 @@ function switchToMenu() {
   if (profile) {
     buildModeButtons(profile);
     buildWeaponButtons(profile);
+    buildThemeButtons(profile);
     const info = document.getElementById('player-info');
     if (info) info.setAttribute('value', `Lv.${profile.level} | ${profile.coins} Coins`);
   }
@@ -227,17 +284,19 @@ function initMenu(profile) {
 
   buildModeButtons(profile);
   buildWeaponButtons(profile);
+  buildThemeButtons(profile);
   refreshRaycasters();
 
   const playBtn = document.getElementById('btn-play-vr');
   if (playBtn) {
+    disableChildRaycast(playBtn);
     playBtn.addEventListener('mouseenter', () => {
       playBtn.setAttribute('material', 'opacity', 1.0);
     });
     playBtn.addEventListener('mouseleave', () => {
       playBtn.setAttribute('material', 'opacity', 0.9);
     });
-    playBtn.addEventListener('click', () => {
+    playBtn.addEventListener('menuclick', () => {
       switchToGame();
     });
   }
@@ -245,13 +304,14 @@ function initMenu(profile) {
   // Shop button
   const shopBtn = document.getElementById('btn-shop-vr');
   if (shopBtn) {
+    disableChildRaycast(shopBtn);
     shopBtn.addEventListener('mouseenter', () => {
       shopBtn.setAttribute('material', 'opacity', 1.0);
     });
     shopBtn.addEventListener('mouseleave', () => {
       shopBtn.setAttribute('material', 'opacity', 0.9);
     });
-    shopBtn.addEventListener('click', () => switchToShop());
+    shopBtn.addEventListener('menuclick', () => switchToShop());
   }
 
   // Exit button
@@ -265,7 +325,7 @@ function initMenu(profile) {
     exitBtn.addEventListener('mouseleave', () => {
       exitBtn.setAttribute('material', 'opacity', 0.9);
     });
-    exitBtn.addEventListener('click', () => {
+    exitBtn.addEventListener('menuclick', () => {
       console.log('[Menu] Exit clicked!');
       const scene = document.getElementById('scene');
       if (scene && scene.is('vr-mode')) {
@@ -286,7 +346,7 @@ function initMenu(profile) {
     shopBackBtn.addEventListener('mouseleave', () => {
       shopBackBtn.setAttribute('material', 'opacity', 0.9);
     });
-    shopBackBtn.addEventListener('click', () => switchFromShop());
+    shopBackBtn.addEventListener('menuclick', () => switchFromShop());
   }
 
   // Init IAP manager
@@ -329,7 +389,7 @@ function setupMouseClick(scene) {
     const hits = raycaster.intersectObjects(clickables, false);
     if (hits.length > 0) {
       const el = hits[0].object.__aframeEl;
-      if (el) el.emit('click', {}, true);
+      if (el) el.emit('menuclick', {}, false);
     }
   });
 }
@@ -345,7 +405,7 @@ function setupControllerClick(scene) {
       if (!rc) return;
       const els = rc.intersectedEls;
       if (els && els.length > 0) {
-        els[0].emit('click', {}, true);
+        els[0].emit('menuclick', {}, true);
       }
     };
 
@@ -498,7 +558,7 @@ function buildShopCards() {
       btn.addEventListener('mouseleave', () => {
         btn.setAttribute('material', 'opacity', 0.9);
       });
-      btn.addEventListener('click', () => handlePurchase(product));
+      btn.addEventListener('menuclick', () => handlePurchase(product));
     }
 
     btn.appendChild(btnText);

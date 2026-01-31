@@ -64,13 +64,10 @@ AFRAME.registerComponent('shoot-controls', {
     // Notify shot fired (for accuracy tracking)
     document.dispatchEvent(new CustomEvent('shot-fired'));
 
-    // Haptic feedback — weapon-specific patterns
+    // Haptic feedback (centralized via HapticManager)
     const hm = window.__hapticManager;
     if (hm) {
-      const wId = weapon?.id;
-      if (wId === 'shotgun') hm.fireShotgun();
-      else if (wId === 'sniper') hm.fireSniper();
-      else hm.firePistol();
+      hm.pulse(weapon?.hapticIntensity || 0.3, weapon?.hapticDuration || 50);
     }
   },
 

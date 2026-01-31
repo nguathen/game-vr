@@ -26,6 +26,19 @@ class HapticManager {
   damageTaken()   { this._pattern([1.0, 100], [0.0, 50], [1.0, 100]); }
   bossKill()      { this._pattern([0.6, 60], [0.0, 40], [0.8, 80], [0.0, 40], [1.0, 120]); }
 
+  // Weapon-specific fire patterns
+  firePistol()    { this.pulse(0.3, 40); }
+  fireShotgun()   { this._pattern([1.0, 60], [0.4, 80]); }
+  fireSniper()    { this._pattern([0.2, 30], [0.8, 100]); }
+
+  // Target-type hit confirmation
+  hitStandard()   { this.pulse(0.4, 40); }
+  hitHeavy()      { this._pattern([0.6, 60], [0.0, 30], [0.8, 80]); }
+  hitBonus()      { this._pattern([0.5, 40], [0.0, 30], [0.5, 40], [0.0, 30], [0.5, 40]); }
+  hitDecoy()      { this._pattern([1.0, 80], [0.0, 40], [1.0, 80]); }
+  hitSpeed()      { this.pulse(0.5, 30); }
+  hitBoss()       { this._pattern([0.7, 80], [0.0, 40], [1.0, 120]); }
+
   async _pattern(...steps) {
     for (const [intensity, duration] of steps) {
       if (intensity > 0) this.pulse(intensity, duration);
