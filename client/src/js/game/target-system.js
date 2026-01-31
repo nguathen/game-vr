@@ -106,6 +106,10 @@ class TargetSystem {
     this._lastBeatTime = 0;
     this._bpm = 120;
 
+    // TASK-290: Multiplier zones
+    this._multiplierZones = new Set();
+    this._lastZoneSpawnTime = 0;
+
     // Laser sweeps (TASK-258)
     this._laserSweeps = new Set();
     this._laserSweepTimer = null;
@@ -116,6 +120,15 @@ class TargetSystem {
   set onComboChange(fn) { this._onComboChange = fn; }
   set onMiss(fn) { this._onMiss = fn; }
   set onPlayerDamage(fn) { this._onPlayerDamage = fn; }
+
+  // TASK-291: Allow dynamic spawn rate changes
+  setSpawnRate(intervalMs) {
+    this._spawnInterval = intervalMs;
+    if (this._spawnTimer) {
+      clearInterval(this._spawnTimer);
+      this._spawnTimer = setInterval(() => this._trySpawn(), intervalMs);
+    }
+  }
   get targetsHit() { return this._targetsHit; }
   get bestCombo() { return this._bestCombo; }
 
@@ -237,6 +250,10 @@ class TargetSystem {
     if (this._beatTimer) { clearInterval(this._beatTimer); this._beatTimer = null; }
     this._rhythmMode = false;
 
+    // Cleanup multiplier zones (TASK-290)
+    this._multiplierZones.forEach(z => { if (z.el?.parentNode) z.el.parentNode.removeChild(z.el); });
+    this._multiplierZones.clear();
+
     // Cleanup laser sweeps (TASK-258)
     if (this._laserSweepTimer) { clearInterval(this._laserSweepTimer); this._laserSweepTimer = null; }
     if (this._laserSweepTick) { clearInterval(this._laserSweepTick); this._laserSweepTick = null; }
@@ -255,6 +272,217 @@ class TargetSystem {
     if (this._targets.size >= effectiveMax) return;
 
     this._spawnTarget();
+  }
+
+  // TASK-287: Movement pattern selection based on wave progress
+  _pickMovementPattern(typeId) {
+    const w = this._wave;
+    const patterns = [{ name: 'float', weight: 30 }];
+    if (w >= 3) patterns.push({ name: 'zigzag', weight: 25 });
+    if (w >= 5) patterns.push({ name: 'orbit', weight: 20 });
+    if (w >= 8) patterns.push({ name: 'dive', weight: 15 });
+    if (w >= 10 && typeId !== 'heavy') patterns.push({ name: 'teleport', weight: 10 });
+    // Speed targets never get static float
+    if (typeId === 'speed' && patterns.length > 1) {
+      const idx = patterns.findIndex(p => p.name === 'float');
+      if (idx >= 0) { patterns[idx].weight = 0; }
+    }
+    const total = patterns.reduce((s, p) => s + p.weight, 0);
+    let r = Math.random() * total;
+    for (const p of patterns) { r -= p.weight; if (r <= 0) return p.name; }
+    return 'float';
+  }
+
+  _applyMovementPattern(el, typeId, type, x, y, z, slowMul) {
+    const pattern = this._pickMovementPattern(typeId);
+    el._movementPattern = pattern;
+
+    switch (pattern) {
+      case 'zigzag': {
+        const rx = (type.speed || 1.5) + Math.random();
+        const ry = 0.5 + Math.random() * 0.5;
+        el.setAttribute('animation__moveX', {
+          property: 'object3D.position.x', from: x - rx, to: x + rx,
+          dur: (700 + Math.random() * 300) * slowMul,
+          easing: 'easeInOutSine', loop: true, dir: 'alternate',
+        });
+        el.setAttribute('animation__moveY', {
+          property: 'object3D.position.y', from: y - ry, to: y + ry,
+          dur: (500 + Math.random() * 300) * slowMul,
+          easing: 'easeInOutSine', loop: true, dir: 'alternate',
+        });
+        break;
+      }
+      case 'orbit': {
+        // Wrap in parent entity that rotates; offset child position for circular orbit
+        const wrapper = document.createElement('a-entity');
+        wrapper.setAttribute('position', `${x} ${y} ${z}`);
+        const orbitR = 1.5 + Math.random();
+        el.setAttribute('position', `${orbitR} 0 0`);
+        wrapper.setAttribute('animation__orbit', {
+          property: 'rotation', from: '0 0 0', to: '0 360 0',
+          dur: (2500 + Math.random() * 1500) * slowMul,
+          easing: 'linear', loop: true,
+        });
+        // Float gently while orbiting
+        el.setAttribute('animation__float', {
+          property: 'object3D.position.y', from: -0.2, to: 0.2,
+          dur: (1000 + Math.random() * 500) * slowMul,
+          easing: 'easeInOutSine', loop: true, dir: 'alternate',
+        });
+        wrapper.appendChild(el);
+        el._orbitWrapper = wrapper;
+        // Insert wrapper instead of el; adjust container reference
+        this._container.appendChild(wrapper);
+        el._skipContainerAppend = true;
+        break;
+      }
+      case 'dive': {
+        // Rush toward camera then retreat
+        const cam = document.getElementById('camera');
+        let cx = 0, cy = 1.6, cz = 0;
+        if (cam) {
+          const cp = new THREE.Vector3();
+          cam.object3D.getWorldPosition(cp);
+          cx = cp.x; cy = cp.y; cz = cp.z;
+        }
+        // Dive halfway toward camera
+        const mx = (x + cx) / 2, my = (y + cy) / 2, mz = (z + cz) / 2;
+        const diveDur = 1200 * slowMul;
+        el.setAttribute('animation__dive', {
+          property: 'position', from: `${x} ${y} ${z}`, to: `${mx} ${my} ${mz}`,
+          dur: diveDur, easing: 'easeInQuad',
+        });
+        el.setAttribute('animation__retreat', {
+          property: 'position', from: `${mx} ${my} ${mz}`, to: `${x} ${y} ${z}`,
+          dur: diveDur * 0.8, easing: 'easeOutQuad', delay: diveDur,
+        });
+        // Loop: after retreat, dive again
+        el.setAttribute('animation__dive2', {
+          property: 'position', from: `${x} ${y} ${z}`, to: `${mx} ${my} ${mz}`,
+          dur: diveDur, easing: 'easeInQuad', delay: diveDur + diveDur * 0.8,
+        });
+        break;
+      }
+      case 'teleport': {
+        const origX = x, origY = y, origZ = z;
+        const tpInterval = setInterval(() => {
+          if (!el.parentNode) { clearInterval(tpInterval); return; }
+          // Blink out
+          el.setAttribute('material', 'opacity', 0);
+          setTimeout(() => {
+            if (!el.parentNode) return;
+            const nx = origX + (Math.random() - 0.5) * 4;
+            const ny = Math.max(0.5, origY + (Math.random() - 0.5) * 2);
+            const nz = origZ + (Math.random() - 0.5) * 4;
+            el.setAttribute('position', `${nx} ${ny} ${nz}`);
+            el.setAttribute('material', 'opacity', 1);
+          }, 200 * slowMul);
+        }, 1500 * slowMul);
+        el._teleportInterval = tpInterval;
+        break;
+      }
+      default: {
+        // Static float (original behavior)
+        el.setAttribute('animation__float', {
+          property: 'position',
+          to: `${x} ${y + 0.3} ${z}`,
+          dur: (1200 + Math.random() * 600) * slowMul,
+          easing: 'easeInOutSine', loop: true, dir: 'alternate',
+        });
+      }
+    }
+  }
+
+  // TASK-288: Wave events
+  _triggerWaveEvent() {
+    const events = ['swarm', 'sniper', 'bonusRain', 'shieldWall'];
+    const event = events[Math.floor(Math.random() * events.length)];
+    document.dispatchEvent(new CustomEvent('wave-event', { detail: { name: event } }));
+
+    setTimeout(() => {
+      if (!this._running) return;
+      switch (event) {
+        case 'swarm': {
+          for (let i = 0; i < 12; i++) {
+            const angle = (i / 12) * Math.PI * 2;
+            const dist = 6 + Math.random() * 3;
+            const pos = {
+              x: Math.sin(angle) * dist,
+              y: 1.5 + Math.random() * 2,
+              z: -Math.cos(angle) * dist,
+            };
+            const el = this._createEventTarget(pos, 0.15, '#ff69b4', 5, 1500);
+            el.setAttribute('animation__move', {
+              property: 'position',
+              to: `${pos.x + (Math.random() - 0.5) * 3} ${pos.y + (Math.random() - 0.5)} ${pos.z + (Math.random() - 0.5) * 3}`,
+              dur: 400 + Math.random() * 300, easing: 'easeInOutSine', loop: true, dir: 'alternate',
+            });
+          }
+          break;
+        }
+        case 'sniper': {
+          const angle = Math.random() * Math.PI * 2;
+          const pos = { x: Math.sin(angle) * 14, y: 2 + Math.random() * 3, z: -Math.cos(angle) * 14 };
+          this._createEventTarget(pos, 0.12, '#00d4ff', 200, 3000);
+          break;
+        }
+        case 'bonusRain': {
+          for (let i = 0; i < 8; i++) {
+            setTimeout(() => {
+              if (!this._running) return;
+              const pos = { x: (Math.random() - 0.5) * 10, y: 8, z: -3 - Math.random() * 8 };
+              const el = this._createEventTarget(pos, 0.25, '#ffd700', 30, 3000);
+              el.setAttribute('animation__fall', {
+                property: 'position', to: `${pos.x} 0.3 ${pos.z}`,
+                dur: 2800, easing: 'easeInQuad',
+              });
+            }, i * 150);
+          }
+          break;
+        }
+        case 'shieldWall': {
+          const wallY = 1.5 + Math.random() * 2;
+          const wallZ = -6 - Math.random() * 4;
+          for (let i = 0; i < 5; i++) {
+            const pos = { x: -3 + i * 1.5, y: wallY, z: wallZ };
+            const el = this._createEventTarget(pos, 0.35, '#ff3333', 20, 8000);
+            el.setAttribute('target-hit', `hp: 2; targetType: heavy`);
+          }
+          break;
+        }
+      }
+    }, 800); // Delay to let HUD announcement show first
+  }
+
+  _createEventTarget(pos, radius, color, points, lifetime) {
+    const el = document.createElement('a-entity');
+    el.setAttribute('class', 'target');
+    el.setAttribute('geometry', `primitive: sphere; radius: ${radius}`);
+    el.setAttribute('material', `color: ${color}; metalness: 0.7; roughness: 0.2; emissive: ${color}; emissiveIntensity: 0.6`);
+    el.setAttribute('position', `${pos.x} ${pos.y} ${pos.z}`);
+    el.setAttribute('shadow', 'cast: true; receive: false');
+    el.setAttribute('target-hit', `hp: 1; targetType: standard`);
+    el.setAttribute('animation__spawn', { property: 'scale', from: '0 0 0', to: '1 1 1', dur: 200, easing: 'easeOutElastic' });
+
+    el._targetType = 'standard';
+    el._targetPoints = points;
+    el._targetCoins = 0;
+
+    el.addEventListener('destroyed', (evt) => {
+      const damage = evt?.detail?.damage || 1;
+      const hitPos = evt?.detail?.position || null;
+      this._onTargetHit(el, damage, hitPos);
+    });
+
+    const expireTimeout = setTimeout(() => {
+      if (this._targets.has(el)) this._removeTarget(el, true);
+    }, lifetime);
+    el._expireTimeout = expireTimeout;
+
+    this._container.appendChild(el);
+    this._targets.add(el);
+    return el;
   }
 
   /** Get current effective target lifetime, scaled by wave progress */
@@ -506,24 +734,9 @@ class TargetSystem {
       dur: 300, easing: 'easeOutElastic',
     });
 
-    const slowMul = powerUpManager.hasSlowField() ? 2.0 : 1.0; // double duration = half speed
+    const slowMul = powerUpManager.hasSlowField() ? 2.0 : 1.0;
     if (!settings.reducedMotion) {
-      if (type.speed > 0) {
-        const range = type.speed;
-        el.setAttribute('animation__move', {
-          property: 'position',
-          to: `${x + range} ${y} ${z}`,
-          dur: (800 + Math.random() * 400) * slowMul,
-          easing: 'easeInOutSine', loop: true, dir: 'alternate',
-        });
-      } else {
-        el.setAttribute('animation__float', {
-          property: 'position',
-          to: `${x} ${y + 0.3} ${z}`,
-          dur: (1200 + Math.random() * 600) * slowMul,
-          easing: 'easeInOutSine', loop: true, dir: 'alternate',
-        });
-      }
+      this._applyMovementPattern(el, typeId, type, x, y, z, slowMul);
     }
 
     // Power-up target: spinning + pulsing glow
@@ -556,7 +769,9 @@ class TargetSystem {
     }, lifetime);
     el._expireTimeout = expireTimeout;
 
-    this._container.appendChild(el);
+    if (!el._skipContainerAppend) {
+      this._container.appendChild(el);
+    }
     this._targets.add(el);
     audioManager.playSpawn({ x, y, z });
 
@@ -657,6 +872,10 @@ class TargetSystem {
       this._combo++;
       this._targetsHit++;
       this._wave++;
+      // TASK-288: Check for wave event every 4-6 waves
+      if (this._wave >= 4 && this._wave % 5 === 0 && Math.random() < 0.4) {
+        this._triggerWaveEvent();
+      }
       if (this._combo > this._bestCombo) this._bestCombo = this._combo;
 
       if (this._comboTimer) clearTimeout(this._comboTimer);
@@ -688,7 +907,8 @@ class TargetSystem {
         }
       }
 
-      const points = basePoints * comboMultiplier * damage * powerUpMultiplier * rhythmMultiplier;
+      const zoneMul = this._getZoneMultiplier(pos);
+      const points = basePoints * comboMultiplier * damage * powerUpMultiplier * rhythmMultiplier * zoneMul;
       scoreManager.add(points);
       this._onComboChange?.(this._combo);
 
@@ -817,6 +1037,77 @@ class TargetSystem {
 
     // Check if heavy/boss targets should fire projectiles (TASK-250)
     this._checkProjectileFiring();
+
+    // TASK-290: Spawn multiplier zones periodically
+    const now = Date.now();
+    if (this._wave >= 3 && this._multiplierZones.size < 2 && now - this._lastZoneSpawnTime > 15000) {
+      if (Math.random() < 0.3) this._spawnMultiplierZone();
+      this._lastZoneSpawnTime = now;
+    }
+    // Expire old zones
+    this._multiplierZones.forEach(z => {
+      if (now - z.spawnTime > 8000) {
+        z.el.setAttribute('animation__fadeOut', { property: 'material.opacity', to: 0, dur: 500 });
+        setTimeout(() => { if (z.el.parentNode) z.el.parentNode.removeChild(z.el); }, 600);
+        this._multiplierZones.delete(z);
+      }
+    });
+  }
+
+  // TASK-290: Multiplier zone
+  _spawnMultiplierZone() {
+    const scene = this._container.sceneEl || this._container.closest('a-scene');
+    if (!scene) return;
+    const x = (Math.random() - 0.5) * 16;
+    const y = 1.5 + Math.random() * 3;
+    const z = -3 - Math.random() * 8;
+
+    const el = document.createElement('a-entity');
+    el.setAttribute('position', `${x} ${y} ${z}`);
+
+    const ring = document.createElement('a-torus');
+    ring.setAttribute('radius', '1.5');
+    ring.setAttribute('radius-tubular', '0.03');
+    ring.setAttribute('material', 'shader: flat; color: #ffd700; opacity: 0.3; transparent: true');
+    ring.setAttribute('animation__pulse', { property: 'material.opacity', from: 0.2, to: 0.5, dur: 800, loop: true, dir: 'alternate' });
+    ring.setAttribute('animation__spin', { property: 'rotation', to: '0 360 0', dur: 4000, loop: true, easing: 'linear' });
+    el.appendChild(ring);
+
+    const label = document.createElement('a-text');
+    label.setAttribute('value', '3X');
+    label.setAttribute('position', '0 0 0');
+    label.setAttribute('align', 'center');
+    label.setAttribute('color', '#ffd700');
+    label.setAttribute('scale', '2 2 2');
+    label.setAttribute('look-at', '[camera]');
+    label.setAttribute('font', 'mozillavr');
+    el.appendChild(label);
+
+    el.setAttribute('animation__spawn', { property: 'scale', from: '0 0 0', to: '1 1 1', dur: 400, easing: 'easeOutElastic' });
+    scene.appendChild(el);
+
+    this._multiplierZones.add({
+      el,
+      pos: new THREE.Vector3(x, y, z),
+      spawnTime: Date.now(),
+    });
+    this._lastZoneSpawnTime = Date.now();
+  }
+
+  _getZoneMultiplier(hitPos) {
+    if (!hitPos) return 1;
+    const hp = new THREE.Vector3(hitPos.x, hitPos.y, hitPos.z);
+    for (const z of this._multiplierZones) {
+      if (hp.distanceTo(z.pos) < 3) {
+        // Flash the zone
+        const ring = z.el.querySelector('a-torus');
+        if (ring) {
+          ring.setAttribute('animation__flash', { property: 'material.opacity', from: 1, to: 0.3, dur: 300 });
+        }
+        return 3;
+      }
+    }
+    return 1;
   }
 
   _triggerSlowMotion() {
@@ -881,10 +1172,13 @@ class TargetSystem {
   _removeTarget(el, expired = false) {
     this._targets.delete(el);
     if (el._expireTimeout) clearTimeout(el._expireTimeout);
+    if (el._teleportInterval) clearInterval(el._teleportInterval);
     const hum = this._targetHums.get(el);
     if (hum) { hum.stop(); this._targetHums.delete(el); }
     // TASK-252: cleanup height indicator
     if (el._heightIndicator?.parentNode) el._heightIndicator.parentNode.removeChild(el._heightIndicator);
+    // TASK-287: cleanup orbit wrapper
+    if (el._orbitWrapper?.parentNode) el._orbitWrapper.parentNode.removeChild(el._orbitWrapper);
 
     if (expired) {
       this._combo = 0;
@@ -997,9 +1291,11 @@ class TargetSystem {
     const dir = new THREE.Vector3(camPos.x - origin.x, camPos.y - origin.y, camPos.z - origin.z).normalize();
 
     const el = document.createElement('a-sphere');
-    el.setAttribute('radius', '0.08');
+    el.setAttribute('radius', '0.15');
     el.setAttribute('position', `${origin.x} ${origin.y} ${origin.z}`);
     el.setAttribute('material', 'shader: flat; color: #ff2222; emissive: #ff0000; emissiveIntensity: 2; opacity: 0.9; transparent: true');
+    // Pulsing glow for visibility
+    el.setAttribute('animation__pulse', { property: 'material.emissiveIntensity', from: 1.5, to: 3, dur: 200, loop: true, dir: 'alternate' });
     el.setAttribute('shadow', 'cast: false; receive: false');
 
     // Trail ring
@@ -1016,8 +1312,9 @@ class TargetSystem {
       el,
       pos: new THREE.Vector3(origin.x, origin.y, origin.z),
       dir,
-      speed: 3,
+      speed: 4,
       spawnTime: Date.now(),
+      playerPosAtLaunch: camPos.clone(), // TASK-289: track for dodge detection
     };
     this._projectiles.add(projectile);
   }
@@ -1052,15 +1349,23 @@ class TargetSystem {
       }
 
       // Hit check: distance to camera head
-      if (p.pos.distanceTo(camPos) < 0.4) {
+      if (p.pos.distanceTo(camPos) < 0.5) {
         toRemove.push(p);
-        this._onProjectileHit(p);
+        // TASK-289: Dodge detection — if player moved >0.4m from launch pos, reward dodge
+        if (p.playerPosAtLaunch && camPos.distanceTo(p.playerPosAtLaunch) > 0.4) {
+          this._onProjectileDodged(p);
+        } else {
+          this._onProjectileHit(p);
+        }
         return;
       }
 
-      // Timeout after 4s
-      if (Date.now() - p.spawnTime > 4000) {
+      // Timeout after 5s — if it passed player, count as dodge
+      if (Date.now() - p.spawnTime > 5000) {
         toRemove.push(p);
+        if (p.playerPosAtLaunch && camPos.distanceTo(p.playerPosAtLaunch) > 0.4) {
+          this._onProjectileDodged(p);
+        }
       }
     });
 
@@ -1106,6 +1411,16 @@ class TargetSystem {
         }
       }
     }
+  }
+
+  // TASK-289: Dodge reward
+  _onProjectileDodged(p) {
+    scoreManager.add(50);
+    const pos = { x: p.pos.x, y: p.pos.y, z: p.pos.z };
+    this._spawnDamageNumber(pos, 50, '#00ff88', 'DODGED!');
+    audioManager.playHit(pos);
+    window.__hapticManager?.pulse(0.6, 80);
+    document.dispatchEvent(new CustomEvent('crosshair-hit'));
   }
 
   _onShieldBlock(p) {
@@ -2001,11 +2316,12 @@ class TargetSystem {
     }, 200);
   }
 
-  // Also: heavy/boss targets fire projectiles periodically
+  // Also: heavy/boss targets fire projectiles periodically (TASK-289: wave-scaled frequency)
   _checkProjectileFiring() {
     if (!this._running || this._projectiles.size >= 3) return;
     const now = Date.now();
-    if (now - this._lastProjectileTime < 4000) return;
+    const minInterval = Math.max(6000, 12000 - this._wave * 100);
+    if (now - this._lastProjectileTime < minInterval) return;
 
     // Find a heavy or boss target to fire from
     for (const el of this._targets) {

@@ -1,6 +1,8 @@
 import authManager from './core/auth-manager.js';
 import { GAME_MODES } from './game/game-modes.js';
 import { WEAPONS } from './game/weapon-system.js';
+import { getRank } from './game/rank-system.js';
+import { ACHIEVEMENTS } from './game/achievements.js';
 
 function initStats(profile) {
   const transition = document.getElementById('transition');
@@ -26,17 +28,18 @@ function buildSummary(profile) {
   const playTimeSec = profile.totalPlayTime || 0;
   const playTimeMin = Math.floor(playTimeSec / 60);
   const achievementCount = (profile.achievements || []).length;
+  const rank = getRank(profile.totalXp || 0);
   const items = [
+    { label: 'Rank', value: `${rank.icon} ${rank.tier}` },
+    { label: 'Level', value: profile.level || 1 },
     { label: 'Games', value: profile.gamesPlayed || 0 },
     { label: 'Targets Hit', value: targetsHit },
-    { label: 'Shots Fired', value: shotsFired },
     { label: 'Accuracy', value: `${accuracy}%` },
     { label: 'Best Combo', value: `x${profile.bestCombo || 0}` },
     { label: 'Play Time', value: `${playTimeMin}m` },
     { label: 'Total XP', value: profile.totalXp || 0 },
-    { label: 'Level', value: profile.level || 1 },
     { label: 'Coins', value: profile.coins || 0 },
-    { label: 'Achievements', value: `${achievementCount}/25` },
+    { label: 'Achievements', value: `${achievementCount}/${ACHIEVEMENTS.length}` },
   ];
   items.forEach(item => {
     const el = document.createElement('div');

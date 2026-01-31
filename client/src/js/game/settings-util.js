@@ -45,6 +45,19 @@ function getDifficultyPreset(settings) {
   return DIFFICULTY_PRESETS[settings?.difficulty || 'normal'] || DIFFICULTY_PRESETS.normal;
 }
 
+/** Apply player-level scaling on top of difficulty preset */
+function getLevelScaledDifficulty(settings, playerLevel) {
+  const base = getDifficultyPreset(settings);
+  const lvl = Math.max(0, (playerLevel || 1) - 1);
+  const s = Math.min(lvl / 19, 1); // 0→1 over levels 1→20
+  return {
+    ...base,
+    spawnMul: base.spawnMul * (1 - s * 0.25),
+    lifetimeMul: base.lifetimeMul * (1 - s * 0.30),
+    maxTargetsMul: base.maxTargetsMul * (1 + s * 0.40),
+  };
+}
+
 function remapColor(color, settings) {
   const mode = settings?.colorblindMode || 'none';
   const palette = COLORBLIND_PALETTES[mode];
@@ -63,5 +76,5 @@ function getSettings() {
   return { ...DEFAULT_SETTINGS };
 }
 
-export { DEFAULT_SETTINGS, getSettings, remapColor, COLORBLIND_PALETTES, DIFFICULTY_PRESETS, getDifficultyPreset };
+export { DEFAULT_SETTINGS, getSettings, remapColor, COLORBLIND_PALETTES, DIFFICULTY_PRESETS, getDifficultyPreset, getLevelScaledDifficulty };
 export default getSettings;

@@ -942,6 +942,26 @@ class AudioManager {
     osc.start(now);
     osc.stop(now + 0.08);
   }
+  // TASK-291: Heartbeat thump for final rush
+  playHeartbeat() {
+    if (!this._ctx) return;
+    let beat = 0;
+    const interval = setInterval(() => {
+      if (beat >= 10 || !this._ctx) { clearInterval(interval); return; }
+      const now = this._ctx.currentTime;
+      const osc = this._ctx.createOscillator();
+      const gain = this._ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(50, now);
+      osc.frequency.exponentialRampToValueAtTime(30, now + 0.15);
+      gain.gain.setValueAtTime(0.3, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
+      osc.connect(gain).connect(this.destination);
+      osc.start(now);
+      osc.stop(now + 0.2);
+      beat++;
+    }, 1000); // 60 BPM
+  }
 }
 
 const audioManager = new AudioManager();

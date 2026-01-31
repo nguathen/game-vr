@@ -254,6 +254,13 @@
         <a-text value="Shop" align="center" color="#ffd700" width="2.5" position="0 0 0.01"></a-text>
       </a-plane>
 
+      <!-- LEADERBOARD Button (left corner) -->
+      <a-plane id="btn-leaderboard-vr" class="clickable" position="-1.25 0.2 -3.3"
+               width="0.5" height="0.38" color="#1a2a4a"
+               material="shader: flat; opacity: 0.9; side: double">
+        <a-text value="🏆 Rank" align="center" color="#00d4ff" width="2.5" position="0 0 0.01"></a-text>
+      </a-plane>
+
       <!-- Decorative floating targets -->
       <a-sphere position="-3 2 -8" radius="0.35" material="color: #e94560; shader: flat"
                 animation="property: position; to: -3 2.5 -8; dur: 2000; easing: easeInOutSine; loop: true; dir: alternate"></a-sphere>
@@ -311,6 +318,55 @@
       <a-plane position="0 0.25 -3.35" width="1.8" height="0.45" color="#aaaacc"
                material="shader: flat; opacity: 0.04"></a-plane>
       <a-plane id="btn-shop-back" class="clickable" position="0 0.25 -3.3"
+               width="1.65" height="0.35" color="#333355"
+               material="shader: flat; opacity: 0.9">
+        <a-text value="← BACK" align="center" color="#aaaacc" width="4"
+                position="0 0 0.01"></a-text>
+      </a-plane>
+    </a-entity>
+
+    <!-- ==================== LEADERBOARD CONTENT (hidden until RANK) ==================== -->
+    <a-entity id="leaderboard-content" visible="false">
+      <!-- Floor -->
+      <a-plane position="0 0 0" rotation="-90 0 0" width="50" height="50" color="#0d1b2a"></a-plane>
+
+      <!-- Lighting -->
+      <a-light type="point" position="0 6 -4" intensity="1" color="#00d4ff" distance="20"></a-light>
+      <a-light type="point" position="-3 4 -6" intensity="0.5" color="#4466ff" distance="15"></a-light>
+      <a-light type="point" position="3 4 -6" intensity="0.5" color="#44ffaa" distance="15"></a-light>
+
+      <!-- Panel layers -->
+      <a-plane position="0 1.6 -3.6" width="4.4" height="3.4" color="#050520"
+               material="shader: flat; opacity: 0.95"></a-plane>
+      <a-plane position="0 1.6 -3.52" width="4.25" height="3.25" color="#00d4ff"
+               material="shader: flat; opacity: 0.06"></a-plane>
+      <a-plane position="0 1.6 -3.5" width="4.2" height="3.2" color="#0a0a2a"
+               material="shader: flat; opacity: 0.92"></a-plane>
+
+      <!-- Title -->
+      <a-text value="🏆 LEADERBOARD" position="0 2.85 -3.42" align="center"
+              color="#00d4ff" width="5" opacity="0.25"></a-text>
+      <a-text value="🏆 LEADERBOARD" position="0 2.85 -3.4" align="center"
+              color="#00d4ff" width="5"></a-text>
+
+      <!-- Mode tabs -->
+      <a-entity id="lb-mode-tabs" position="0 2.5 -3.4"></a-entity>
+
+      <!-- Rank info -->
+      <a-text id="lb-rank-info-vr" value="" position="0 2.3 -3.4" align="center"
+              color="#ffd700" width="2.5"></a-text>
+
+      <!-- Leaderboard rows container -->
+      <a-entity id="lb-rows" position="0 1.8 -3.4"></a-entity>
+
+      <!-- Loading text -->
+      <a-text id="lb-loading" value="Loading..." position="0 1.5 -3.4" align="center"
+              color="#555" width="2" visible="true"></a-text>
+
+      <!-- Back button -->
+      <a-plane position="0 0.25 -3.35" width="1.8" height="0.45" color="#aaaacc"
+               material="shader: flat; opacity: 0.04"></a-plane>
+      <a-plane id="btn-lb-back" class="clickable" position="0 0.25 -3.3"
                width="1.65" height="0.35" color="#333355"
                material="shader: flat; opacity: 0.9">
         <a-text value="← BACK" align="center" color="#aaaacc" width="4"

@@ -11,7 +11,7 @@ import { checkProgress } from './game/daily-challenge.js';
 import { checkAchievements } from './game/achievements.js';
 import { applyTheme } from './game/environment-themes.js';
 import { getSkinOverrides } from './game/weapon-skins.js';
-import { getSettings, getDifficultyPreset } from './game/settings-util.js';
+import { getSettings, getLevelScaledDifficulty } from './game/settings-util.js';
 import musicManager from './core/music-manager.js';
 import { buildSummary } from './game/game-summary.js';
 import powerUpManager from './game/power-up-manager.js';
@@ -20,6 +20,8 @@ import weatherSystem from './game/weather-system.js';
 import arenaReactions from './game/arena-reactions.js';
 import { getCurrentChallenge, getDaysRemaining } from './game/weekly-challenge.js';
 import { checkNewUnlocks } from './game/unlock-tooltips.js';
+import { showAchievementToasts } from './game/achievement-toast.js';
+import { getRank } from './game/rank-system.js';
 
 const COUNTDOWN_FROM = 3;
 
@@ -27,6 +29,8 @@ let targetSystem;
 let timerInterval;
 let timeLeft;
 let _gameStartTime = 0;
+let _originalSpawnInterval = 1500;
+let _frenzyActive = false;
 let _onReturnToMenu;
 let _initialized = false;
 
@@ -244,12 +248,15 @@ function _initRound(themeParam) {
   const container = document.getElementById('target-container');
   const mode = gameModeManager.current;
 
-  const diff = getDifficultyPreset(getSettings());
+  const playerLevel = authManager.profile?.level || 1;
+  const diff = getLevelScaledDifficulty(getSettings(), playerLevel);
   const challenge = getCurrentChallenge();
   const cMod = challenge.modifiers || {};
   const lifetimeMul = diff.lifetimeMul * (cMod.lifetimeMul || 1);
+  _originalSpawnInterval = Math.round(mode.spawnInterval * diff.spawnMul);
+  _frenzyActive = false;
   targetSystem = new TargetSystem(container, {
-    spawnInterval: Math.round(mode.spawnInterval * diff.spawnMul),
+    spawnInterval: _originalSpawnInterval,
     maxTargets: Math.round(mode.maxTargets * diff.maxTargetsMul),
     targetLifetime: Math.round(mode.targetLifetime * lifetimeMul),
     bossMode: mode.id === 'bossRush',
@@ -310,6 +317,21 @@ function _initRound(themeParam) {
   powerUpManager.onDeactivate = () => {
     if (_hudPowerup) _hudPowerup.setAttribute('value', '');
   };
+
+  // TASK-288: Wave event HUD announcement
+  document.addEventListener('wave-event', (evt) => {
+    const names = { swarm: '🌊 SWARM!', sniper: '🎯 SNIPER DUEL!', bonusRain: '🌟 BONUS RAIN!', shieldWall: '🛡️ SHIELD WALL!' };
+    const name = names[evt.detail?.name] || evt.detail?.name;
+    if (_hudCombo) {
+      _hudCombo.setAttribute('value', name);
+      _hudCombo.setAttribute('color', '#ff8800');
+      _hudCombo.setAttribute('animation__pop', {
+        property: 'scale', from: '0.6 0.6 0.6', to: '0.4 0.4 0.4',
+        dur: 300, easing: 'easeOutElastic',
+      });
+      setTimeout(() => { if (_hudCombo) _hudCombo.setAttribute('value', ''); }, 2000);
+    }
+  });
 
   scoreManager.onChange(score => {
     _hudScore.setAttribute('value', `Score: ${score}`);
@@ -701,6 +723,11 @@ function startRound() {
       timeLeft--;
       _hudTimer.setAttribute('value', String(timeLeft));
 
+      if (timeLeft <= 3 && !_frenzyActive) {
+        // TASK-291: Extreme frenzy — triple spawn rate
+        _frenzyActive = true;
+        targetSystem.setSpawnRate(Math.round(_originalSpawnInterval * 0.33));
+      }
       if (timeLeft <= 5) {
         _hudTimer.setAttribute('color', '#ff0000');
         _hudTimer.setAttribute('animation__pulse', {
@@ -713,6 +740,24 @@ function startRound() {
           property: 'scale', from: '0.35 0.35 0.35', to: '0.42 0.42 0.42',
           dur: 500, loop: true, dir: 'alternate', easing: 'easeInOutSine',
         });
+        // TASK-291: Final Rush — double spawn rate + announce
+        if (timeLeft === 10) {
+          targetSystem.setSpawnRate(Math.round(_originalSpawnInterval * 0.5));
+          musicManager.setIntensity(20);
+          if (_hudCombo) {
+            _hudCombo.setAttribute('value', '⚡ FINAL RUSH!');
+            _hudCombo.setAttribute('color', '#ff0000');
+            _hudCombo.setAttribute('animation__pop', {
+              property: 'scale', from: '0.7 0.7 0.7', to: '0.4 0.4 0.4',
+              dur: 400, easing: 'easeOutElastic',
+            });
+            setTimeout(() => { if (_hudCombo) _hudCombo.setAttribute('value', ''); }, 2000);
+          }
+          // Red vignette pulse
+          document.dispatchEvent(new CustomEvent('camera-vignette', { detail: { color: '#ff0000', intensity: 0.3 } }));
+          // Heartbeat audio via low-frequency pulses
+          audioManager.playHeartbeat?.();
+        }
       } else {
         _hudTimer.setAttribute('color', '#ffaa00');
         _hudTimer.removeAttribute('animation__pulse');
@@ -777,9 +822,8 @@ async function endGame() {
   pws[weaponId].bestScore = Math.max(pws[weaponId].bestScore, result.score);
   await authManager.saveProfile({ weaponUsage: wu, modeStats: ms, recentGames: recent, totalShotsFired, totalPlayTime, bestAccuracy, perWeaponStats: pws });
 
-  if (isNewHigh) {
-    leaderboardManager.submitScore(currentMode.id, result.score).catch(() => {});
-  }
+  // Always submit score — leaderboardManager keeps best per player
+  leaderboardManager.submitScore(currentMode.id, result.score).catch(() => {});
 
   const challengeResult = await checkProgress({
     score: result.score,
@@ -791,36 +835,144 @@ async function endGame() {
 
   const newAchievements = await checkAchievements();
 
+  // TASK-296: Achievement toast notifications
+  if (newAchievements.length > 0) {
+    audioManager.playAchievement?.();
+    showAchievementToasts(newAchievements);
+  }
+
+  // TASK-293: Daily challenge completion notification
+  if (challengeResult.justCompleted && _hudCombo) {
+    setTimeout(() => {
+      _hudCombo.setAttribute('value', `✅ Challenge Complete! +${challengeResult.challenge.rewardXp} XP`);
+      _hudCombo.setAttribute('color', '#00ff88');
+      _hudCombo.setAttribute('visible', 'true');
+      setTimeout(() => _hudCombo.setAttribute('value', ''), 3000);
+    }, 500);
+  }
+
   if (levelResult.leveledUp) {
     audioManager.playLevelUp();
     checkNewUnlocks(levelResult.oldLevel, levelResult.newLevel);
+
+    // TASK-294: Rank-up check
+    const oldRank = getRank(profile.totalXp - xpEarned);
+    const newRank = getRank(profile.totalXp);
+    if (oldRank.tier !== newRank.tier) {
+      _showRankUpPopup(newRank);
+    }
   }
 
-  // VR: show 3D game over HUD and auto-return to menu
-  const hudGameover = document.getElementById('hud-gameover');
-  if (hudGameover) {
-    const goScore = document.getElementById('hud-go-score');
-    const goStats = document.getElementById('hud-go-stats');
-    const goTitle = document.getElementById('hud-go-title');
-    if (goScore) goScore.setAttribute('value', `Score: ${result.score}`);
-    if (goStats) goStats.setAttribute('value', `Targets: ${targetSystem.targetsHit}  |  Combo: x${targetSystem.bestCombo}  |  Acc: ${summary.accuracy}%`);
-    if (goTitle && isNewHigh) goTitle.setAttribute('value', 'NEW HIGH SCORE!');
-    if (goTitle && isNewHigh) goTitle.setAttribute('color', '#ffd700');
-    hudGameover.setAttribute('visible', 'true');
+  // VR: show post-game summary and auto-return to menu
+  _showPostGameSummary(result, summary, isNewHigh, xpEarned, challengeResult, currentMode);
+}
 
-    // Hide HUD elements during game over display
-    ['hud-score', 'hud-timer', 'hud-combo', 'hud-lives', 'hud-weapon', 'hud-level', 'hud-powerup', 'hud-boss'].forEach(id => {
-      const el = document.getElementById(id);
-      if (el) el.setAttribute('visible', 'false');
+// TASK-294: Rank-up VR popup
+function _showRankUpPopup(rank) {
+  const scene = document.querySelector('a-scene');
+  if (!scene) return;
+
+  const panel = document.createElement('a-entity');
+  panel.setAttribute('position', '0 2.8 -2.5');
+
+  const bg = document.createElement('a-plane');
+  bg.setAttribute('width', '1.8');
+  bg.setAttribute('height', '0.5');
+  bg.setAttribute('material', `shader: flat; color: #111122; opacity: 0.92; transparent: true`);
+  bg.setAttribute('position', '0 0 -0.01');
+  panel.appendChild(bg);
+
+  const glow = document.createElement('a-plane');
+  glow.setAttribute('width', '1.84');
+  glow.setAttribute('height', '0.54');
+  glow.setAttribute('material', `shader: flat; color: ${rank.color}; opacity: 0.25; transparent: true`);
+  glow.setAttribute('position', '0 0 -0.02');
+  glow.setAttribute('animation__pulse', {
+    property: 'material.opacity', from: 0.15, to: 0.35,
+    dur: 600, loop: true, dir: 'alternate', easing: 'easeInOutSine',
+  });
+  panel.appendChild(glow);
+
+  const title = document.createElement('a-text');
+  title.setAttribute('value', 'RANK UP!');
+  title.setAttribute('color', rank.color);
+  title.setAttribute('align', 'center');
+  title.setAttribute('width', '2.5');
+  title.setAttribute('position', '0 0.1 0');
+  panel.appendChild(title);
+
+  const text = document.createElement('a-text');
+  text.setAttribute('value', `${rank.icon} ${rank.tier}`);
+  text.setAttribute('color', '#ffffff');
+  text.setAttribute('align', 'center');
+  text.setAttribute('width', '3');
+  text.setAttribute('position', '0 -0.1 0');
+  panel.appendChild(text);
+
+  panel.setAttribute('scale', '0 0 0');
+  panel.setAttribute('animation__in', {
+    property: 'scale', to: '1 1 1', dur: 300, easing: 'easeOutBack',
+  });
+
+  scene.appendChild(panel);
+
+  setTimeout(() => {
+    panel.setAttribute('animation__out', {
+      property: 'scale', to: '0 0 0', dur: 200, easing: 'easeInQuad',
     });
-
     setTimeout(() => {
-      hudGameover.setAttribute('visible', 'false');
-      // Reset title for next game
-      if (goTitle) { goTitle.setAttribute('value', 'GAME OVER'); goTitle.setAttribute('color', '#ff4444'); }
-      if (_onReturnToMenu) _onReturnToMenu();
-    }, 4000);
+      if (panel.parentNode) panel.parentNode.removeChild(panel);
+    }, 250);
+  }, 4000);
+}
+
+// TASK-295: Post-Game Summary Screen
+function _showPostGameSummary(result, summary, isNewHigh, xpEarned, challengeResult, currentMode) {
+  const hudGameover = document.getElementById('hud-gameover');
+  if (!hudGameover) return;
+
+  const goScore = document.getElementById('hud-go-score');
+  const goStats = document.getElementById('hud-go-stats');
+  const goTitle = document.getElementById('hud-go-title');
+  const goInfo = document.getElementById('hud-go-info');
+
+  if (goTitle) {
+    if (isNewHigh) {
+      goTitle.setAttribute('value', '⭐ NEW HIGH SCORE!');
+      goTitle.setAttribute('color', '#ffd700');
+    } else {
+      goTitle.setAttribute('value', 'GAME OVER');
+      goTitle.setAttribute('color', '#ff4444');
+    }
   }
+  if (goScore) goScore.setAttribute('value', `Score: ${result.score}`);
+  if (goStats) {
+    const rank = getRank(authManager.profile?.totalXp || 0);
+    goStats.setAttribute('value',
+      `Acc: ${summary.accuracy}%  |  Combo: x${targetSystem.bestCombo}  |  +${xpEarned} XP\n` +
+      `${rank.icon} ${rank.tier}  |  Targets: ${targetSystem.targetsHit}`
+    );
+  }
+  if (goInfo) {
+    const lines = [];
+    if (challengeResult.justCompleted) lines.push(`✅ Challenge +${challengeResult.challenge.rewardXp} XP`);
+    lines.push('Returning to menu...');
+    goInfo.setAttribute('value', lines.join('\n'));
+  }
+
+  hudGameover.setAttribute('visible', 'true');
+
+  // Hide HUD elements during game over display
+  ['hud-score', 'hud-timer', 'hud-combo', 'hud-lives', 'hud-weapon', 'hud-level', 'hud-powerup', 'hud-boss'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.setAttribute('visible', 'false');
+  });
+
+  setTimeout(() => {
+    hudGameover.setAttribute('visible', 'false');
+    if (goTitle) { goTitle.setAttribute('value', 'GAME OVER'); goTitle.setAttribute('color', '#ff4444'); }
+    if (_onReturnToMenu) _onReturnToMenu();
+  }, 6000);
 }
 
 // === Ambient Environment Motion (TASK-243) ===
