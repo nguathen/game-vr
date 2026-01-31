@@ -40,6 +40,9 @@ function buildSummary(profile) {
     { label: 'Total XP', value: profile.totalXp || 0 },
     { label: 'Coins', value: profile.coins || 0 },
     { label: 'Achievements', value: `${achievementCount}/${ACHIEVEMENTS.length}` },
+    { label: 'Best Reaction', value: profile.bestReactionTime ? `${profile.bestReactionTime}ms` : '—' },
+    { label: 'Avg Reaction', value: profile.avgReactionTime ? `${profile.avgReactionTime}ms` : '—' },
+    { label: 'Peripheral Hits', value: profile.peripheralHits || 0 },
   ];
   items.forEach(item => {
     const el = document.createElement('div');

@@ -52,7 +52,7 @@ export function startGame({ mode, weapon, theme, onReturnToMenu }) {
 }
 
 // DOM refs (set once)
-let _hudScore, _hudTimer, _hudCombo, _hudLives, _hudWeapon, _hudLevel, _hudPowerup;
+let _hudScore, _hudTimer, _hudCombo, _hudLives, _hudWeapon, _hudLevel, _hudPowerup, _hudReaction, _hudColorMatch;
 let _scene, _btnQuitVr;
 
 function _initOnce() {
@@ -63,6 +63,8 @@ function _initOnce() {
   _hudWeapon = document.getElementById('hud-weapon');
   _hudLevel = document.getElementById('hud-level');
   _hudPowerup = document.getElementById('hud-powerup');
+  _hudReaction = document.getElementById('hud-reaction');
+  _hudColorMatch = document.getElementById('hud-color-match');
   _scene = document.getElementById('scene');
   _btnQuitVr = document.getElementById('btn-quit-vr');
 
@@ -155,6 +157,30 @@ function _initOnce() {
       el.setAttribute('damage-number', `text: DODGE! +${pts}; color: #ff4444`);
       _scene.appendChild(el);
     }
+  });
+
+  // TASK-300: Reaction time HUD
+  document.addEventListener('reaction-time', (e) => {
+    if (gameManager.state !== GameState.PLAYING || !_hudReaction) return;
+    const ms = e.detail?.ms || 0;
+    const avg = e.detail?.avg || 0;
+    const color = ms < 200 ? '#44ff44' : ms < 400 ? '#ffff00' : '#ff4444';
+    _hudReaction.setAttribute('value', `⚡ ${ms}ms (avg ${avg}ms)`);
+    _hudReaction.setAttribute('color', color);
+  });
+
+  // TASK-301: Color-match HUD indicator
+  document.addEventListener('color-match-change', (e) => {
+    if (!_hudColorMatch) return;
+    const { emoji, color } = e.detail;
+    _hudColorMatch.setAttribute('value', `SHOOT: ${emoji}`);
+    _hudColorMatch.setAttribute('color', color);
+    _hudColorMatch.setAttribute('visible', 'true');
+    // Flash animation
+    _hudColorMatch.setAttribute('animation__flash', {
+      property: 'scale', from: '0.5 0.5 0.5', to: '0.35 0.35 0.35',
+      dur: 200, easing: 'easeOutBack',
+    });
   });
 
   // Slow-motion overlay handler
@@ -260,6 +286,7 @@ function _initRound(themeParam) {
     maxTargets: Math.round(mode.maxTargets * diff.maxTargetsMul),
     targetLifetime: Math.round(mode.targetLifetime * lifetimeMul),
     bossMode: mode.id === 'bossRush',
+    reflexMode: mode.reflexMode || false,
     challengeModifiers: cMod,
   });
 
@@ -820,7 +847,15 @@ async function endGame() {
   pws[weaponId].shots += summary.shotsFired || 0;
   pws[weaponId].games++;
   pws[weaponId].bestScore = Math.max(pws[weaponId].bestScore, result.score);
-  await authManager.saveProfile({ weaponUsage: wu, modeStats: ms, recentGames: recent, totalShotsFired, totalPlayTime, bestAccuracy, perWeaponStats: pws });
+  // TASK-300: Reaction time stats
+  const avgRt = targetSystem.avgReactionTime;
+  const bestRt = targetSystem.bestReactionTime;
+  const savedBestRt = profile.bestReactionTime || 9999;
+  const newBestRt = bestRt > 0 ? Math.min(savedBestRt, bestRt) : savedBestRt;
+  const newAvgRt = avgRt > 0 ? (profile.avgReactionTime > 0 ? Math.round((profile.avgReactionTime + avgRt) / 2) : avgRt) : (profile.avgReactionTime || 0);
+  // TASK-304: Peripheral hits
+  const totalPeripheralHits = (profile.peripheralHits || 0) + targetSystem.peripheralHits;
+  await authManager.saveProfile({ weaponUsage: wu, modeStats: ms, recentGames: recent, totalShotsFired, totalPlayTime, bestAccuracy, perWeaponStats: pws, bestReactionTime: newBestRt === 9999 ? 0 : newBestRt, avgReactionTime: newAvgRt, peripheralHits: totalPeripheralHits });
 
   // Always submit score — leaderboardManager keeps best per player
   leaderboardManager.submitScore(currentMode.id, result.score).catch(() => {});

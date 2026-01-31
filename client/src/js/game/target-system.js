@@ -22,6 +22,8 @@ const TARGET_MATERIALS = {
   bonus:    { metalness: 0.7, roughness: 0.2, emissive: '#ffd700', emissiveIntensity: 0.8 },
   decoy:    { metalness: 0.5, roughness: 0.5, emissive: '#440000', emissiveIntensity: 0.3 },
   powerup:  { metalness: 0.9, roughness: 0.1, emissive: '#00ffaa', emissiveIntensity: 1.0 },
+  blink:    { metalness: 0.8, roughness: 0.2, emissive: '#ff00ff', emissiveIntensity: 0.8 },
+  peripheral: { metalness: 0.7, roughness: 0.2, emissive: '#ff8800', emissiveIntensity: 0.9 },
 };
 
 const TARGET_TYPES = {
@@ -31,7 +33,16 @@ const TARGET_TYPES = {
   bonus:     { weight: 8,  points: 50, radius: 0.25, geometry: 'a-torus', color: '#ffd700', hp: 1, speed: 0, lifetime: 2000, coins: 5 },
   decoy:     { weight: 7,  points: -10, radius: 0.3, geometry: 'a-sphere', color: '#882222', hp: 1, speed: 0, lifetime: null, coins: 0 },
   powerup:   { weight: 5,  points: 10,  radius: 0.35, geometry: 'a-torus-knot', color: '#00ffaa', hp: 1, speed: 1.5, lifetime: 3000, coins: 0 },
+  blink:     { weight: 0,  points: 35,  radius: 0.28, geometry: 'a-icosahedron', color: '#ff00ff', hp: 1, speed: 0, lifetime: null, coins: 0 },
+  peripheral:{ weight: 0,  points: 40,  radius: 0.3,  geometry: 'a-icosahedron', color: '#ff8800', hp: 1, speed: 0, lifetime: 2500, coins: 0 },
 };
+
+// TASK-301: Color-match colors
+const COLOR_MATCH_COLORS = [
+  { id: 'red', color: '#ff4444', emoji: '🔴', shape: 'a-icosahedron' },
+  { id: 'blue', color: '#4488ff', emoji: '🔵', shape: 'a-octahedron' },
+  { id: 'green', color: '#44ff44', emoji: '🟢', shape: 'a-dodecahedron' },
+];
 
 class TargetSystem {
   constructor(containerEl, config = {}) {
@@ -115,6 +126,25 @@ class TargetSystem {
     this._laserSweepTimer = null;
     this._laserSweepTick = null;
     this._lastLaserSweepTime = 0;
+
+    // TASK-300: Reaction time tracking
+    this._reactionTimes = [];
+
+    // TASK-301: Color-match system
+    this._colorMatchActive = false;
+    this._colorMatchRequired = null;
+    this._colorMatchTimer = null;
+
+    // TASK-302: Reflex Rush mode
+    this._reflexMode = false;
+    this._reflexLifetime = 2000;
+    this._reflexHitsCount = 0;
+
+    // TASK-303: Blink target tick
+    this._blinkTick = null;
+
+    // TASK-304: Peripheral vision tracker
+    this._peripheralHits = 0;
   }
 
   set onComboChange(fn) { this._onComboChange = fn; }
@@ -133,12 +163,23 @@ class TargetSystem {
   get bestCombo() { return this._bestCombo; }
 
   get coinsEarned() { return this._coinsEarned; }
+  get reactionTimes() { return this._reactionTimes; }
+  get peripheralHits() { return this._peripheralHits; }
+  get avgReactionTime() {
+    if (this._reactionTimes.length === 0) return 0;
+    return Math.round(this._reactionTimes.reduce((a, b) => a + b, 0) / this._reactionTimes.length);
+  }
+  get bestReactionTime() {
+    if (this._reactionTimes.length === 0) return 0;
+    return Math.min(...this._reactionTimes);
+  }
 
   configure(config) {
     this._spawnInterval = config.spawnInterval || this._spawnInterval;
     this._maxTargets = config.maxTargets || this._maxTargets;
     this._targetLifetime = config.targetLifetime || this._targetLifetime;
     this._bossMode = config.bossMode || false;
+    this._reflexMode = config.reflexMode || false;
     this._wave = 0;
     this._coinsEarned = 0;
   }
@@ -196,6 +237,26 @@ class TargetSystem {
     this._lastLaserSweepTime = Date.now() + 15000; // grace period
     this._laserSweepTimer = setInterval(() => this._tryLaunchLaserSweep(), 1000);
     this._laserSweepTick = setInterval(() => this._updateLaserSweeps(), 30);
+
+    // TASK-300: Reaction time tracking
+    this._reactionTimes = [];
+
+    // TASK-301: Color-match system (active from wave 3+)
+    this._colorMatchActive = false;
+    this._colorMatchRequired = null;
+    if (this._colorMatchTimer) clearInterval(this._colorMatchTimer);
+    this._colorMatchTimer = setInterval(() => this._updateColorMatch(), 1000);
+
+    // TASK-302: Reflex Rush mode
+    this._reflexLifetime = 2000;
+    this._reflexHitsCount = 0;
+
+    // TASK-303: Blink target tick
+    if (this._blinkTick) clearInterval(this._blinkTick);
+    this._blinkTick = setInterval(() => this._updateBlinkTargets(), 100);
+
+    // TASK-304: Peripheral hits tracking
+    this._peripheralHits = 0;
   }
 
   stop() {
@@ -260,11 +321,25 @@ class TargetSystem {
     this._laserSweeps.forEach(s => { if (s.el?.parentNode) s.el.parentNode.removeChild(s.el); });
     this._laserSweeps.clear();
 
+    // Cleanup color-match (TASK-301)
+    if (this._colorMatchTimer) { clearInterval(this._colorMatchTimer); this._colorMatchTimer = null; }
+    this._colorMatchActive = false;
+
+    // Cleanup blink tick (TASK-303)
+    if (this._blinkTick) { clearInterval(this._blinkTick); this._blinkTick = null; }
+
     this._clearAll();
   }
 
   _trySpawn() {
     if (!this._running || this._bossSpawnPaused) return;
+
+    // TASK-302: Reflex Rush — only 1 target at a time
+    if (this._reflexMode) {
+      if (this._targets.size >= 1) return;
+      this._spawnTarget();
+      return;
+    }
 
     // Progressive difficulty: scale with wave count
     const waveScale = Math.min(this._wave / 50, 1); // 0→1 over 50 waves
@@ -494,14 +569,20 @@ class TargetSystem {
 
   _pickTargetType() {
     if (this._bossMode) return 'heavy';
+    // TASK-302: Reflex Rush only spawns standard targets
+    if (this._reflexMode) return 'standard';
 
     // Weekly challenge: force a specific target type
     if (this._challengeMods.forceTargetType) return this._challengeMods.forceTargetType;
 
-    // Build weighted list with challenge modifiers
+    // Build weighted list with challenge modifiers + wave-unlocked types
     let total = 0;
     const entries = Object.entries(TARGET_TYPES).map(([id, t]) => {
       let w = t.weight;
+      // TASK-303: Blink targets from wave 5+
+      if (id === 'blink') w = this._wave >= 5 ? 10 : 0;
+      // TASK-304: Peripheral targets from wave 4+
+      if (id === 'peripheral') w = this._wave >= 4 ? 8 : 0;
       if (id === 'powerup' && this._challengeMods.powerupWeightMul) w *= this._challengeMods.powerupWeightMul;
       if (id === 'bonus' && this._challengeMods.bonusWeightMul) w *= this._challengeMods.bonusWeightMul;
       total += w;
@@ -526,14 +607,26 @@ class TargetSystem {
       if (this._challengeMods.pointsMul) type.points *= this._challengeMods.pointsMul;
     }
 
-    // TASK-256: 15% chance to spawn melee target (standard type only, not boss mode)
-    if (!this._bossMode && typeId === 'standard' && Math.random() < 0.15) {
+    // TASK-256: 15% chance to spawn melee target (standard type only, not boss mode, not reflex)
+    if (!this._bossMode && !this._reflexMode && typeId === 'standard' && Math.random() < 0.15) {
       this._spawnMeleeTarget();
       return;
     }
 
-    // 360-degree spawn position (pick early for telegraph)
-    const spawnPos = this._pick360Position();
+    // TASK-301: Wave 3+, 25% chance to spawn color-match target (not boss/reflex)
+    if (!this._bossMode && !this._reflexMode && this._wave >= 3 && typeId === 'standard' && Math.random() < 0.25) {
+      this._spawnColorMatchTarget();
+      return;
+    }
+
+    // TASK-304: Peripheral targets spawn at 90-150° from camera
+    let spawnPos;
+    if (typeId === 'peripheral') {
+      spawnPos = this._pickPeripheralPosition();
+    } else {
+      // 360-degree spawn position (pick early for telegraph)
+      spawnPos = this._pick360Position();
+    }
 
     // TASK-257: rhythm mode overrides spawn position timing
     if (this._rhythmMode && typeId !== 'decoy') {
@@ -754,6 +847,20 @@ class TargetSystem {
     el._targetType = typeId;
     el._targetPoints = type.points;
     el._targetCoins = type.coins;
+    // TASK-300: Mark spawn-ready time for reaction tracking
+    el._spawnReadyTime = Date.now();
+
+    // TASK-302: Reflex Rush — use decreasing lifetime
+    if (this._reflexMode) {
+      type = { ...type, lifetime: this._reflexLifetime };
+    }
+
+    // TASK-303: Blink target setup
+    if (typeId === 'blink') {
+      el._blinkVisible = true;
+      el._blinkInterval = 400 + Math.random() * 200;
+      el._lastBlinkTime = Date.now();
+    }
 
     el.addEventListener('destroyed', (evt) => {
       const damage = evt?.detail?.damage || 1;
@@ -860,6 +967,39 @@ class TargetSystem {
     const isDecoy = el._targetType === 'decoy';
     const pos = hitPos || { x: 0, y: 2, z: -5 };
 
+    // TASK-303: Blink target — if ghost state, penalize
+    if (el._targetType === 'blink' && !el._blinkVisible) {
+      scoreManager.add(-10);
+      this._combo = 0;
+      this._onComboChange?.(0);
+      audioManager.playMiss();
+      this._spawnDamageNumber(pos, -10, '#ff4444', ' GHOST!');
+      this._flashScreen('miss');
+      this._removeTarget(el, false);
+      return;
+    }
+
+    // TASK-301: Color-match wrong color — penalize
+    if (el._colorMatchColor && this._colorMatchRequired && el._colorMatchColor !== this._colorMatchRequired) {
+      scoreManager.add(-15);
+      this._combo = 0;
+      this._onComboChange?.(0);
+      audioManager.playMiss();
+      window.__hapticManager?.miss?.();
+      this._spawnDamageNumber(pos, -15, '#ff4444', ' WRONG!');
+      this._flashScreen('miss');
+      this._removeTarget(el, false);
+      return;
+    }
+
+    // TASK-300: Track reaction time
+    let reactionTime = 0;
+    if (el._spawnReadyTime) {
+      reactionTime = Date.now() - el._spawnReadyTime;
+      this._reactionTimes.push(reactionTime);
+      document.dispatchEvent(new CustomEvent('reaction-time', { detail: { ms: reactionTime, avg: this.avgReactionTime } }));
+    }
+
     if (isDecoy) {
       scoreManager.add(basePoints); // negative points
       this._combo = 0;
@@ -907,8 +1047,25 @@ class TargetSystem {
         }
       }
 
+      // TASK-302: Reflex Rush speed bonus
+      let reflexMultiplier = 1;
+      let reflexLabel = '';
+      if (this._reflexMode && reactionTime > 0) {
+        if (reactionTime < 200) { reflexMultiplier = 3; reflexLabel = ' BLAZING!'; }
+        else if (reactionTime < 400) { reflexMultiplier = 2; reflexLabel = ' FAST!'; }
+        else if (reactionTime < 600) { reflexMultiplier = 1.5; reflexLabel = ' QUICK'; }
+        // Decrease lifetime for next target
+        this._reflexHitsCount++;
+        this._reflexLifetime = Math.max(500, 2000 - this._reflexHitsCount * 50);
+      }
+
+      // TASK-304: Peripheral hit tracking
+      if (el._targetType === 'peripheral') {
+        this._peripheralHits++;
+      }
+
       const zoneMul = this._getZoneMultiplier(pos);
-      const points = basePoints * comboMultiplier * damage * powerUpMultiplier * rhythmMultiplier * zoneMul;
+      const points = Math.round(basePoints * comboMultiplier * damage * powerUpMultiplier * rhythmMultiplier * zoneMul * reflexMultiplier);
       scoreManager.add(points);
       this._onComboChange?.(this._combo);
 
@@ -932,12 +1089,14 @@ class TargetSystem {
         window.__hapticManager?.powerUp();
       }
 
-      // Damage number
+      // Damage number with reaction time
       const comboText = comboMultiplier > 1 ? ` x${comboMultiplier}` : '';
       const puText = powerUpMultiplier > 1 ? ' 2X' : '';
       const rhythmText = rhythmGrade ? ` ${rhythmGrade}` : '';
-      const color = rhythmGrade === 'PERFECT' ? '#ffff00' : el._targetType === 'bonus' ? '#ffd700' : el._targetType === 'powerup' ? '#00ffaa' : el._isMelee ? '#ff8800' : comboMultiplier > 1 ? '#00d4ff' : '#ffffff';
-      this._spawnDamageNumber(pos, points, color, comboText + puText + rhythmText);
+      const rtText = reactionTime > 0 ? ` ${reactionTime}ms` : '';
+      const rtColor = reactionTime > 0 ? (reactionTime < 200 ? '#44ff44' : reactionTime < 400 ? '#ffff00' : '#ff4444') : null;
+      const color = rtColor || (reflexLabel ? '#00ffff' : rhythmGrade === 'PERFECT' ? '#ffff00' : el._targetType === 'bonus' ? '#ffd700' : el._targetType === 'powerup' ? '#00ffaa' : el._isMelee ? '#ff8800' : el._targetType === 'peripheral' ? '#ff8800' : comboMultiplier > 1 ? '#00d4ff' : '#ffffff');
+      this._spawnDamageNumber(pos, points, color, comboText + puText + rhythmText + reflexLabel + rtText);
       this._flashScreen('hit');
 
       // Bonus coins
@@ -2340,6 +2499,153 @@ class TargetSystem {
 
   _rand(min, max) {
     return Math.random() * (max - min) + min;
+  }
+
+  // ==================== TASK-301: Color-Match Targets ====================
+
+  _updateColorMatch() {
+    if (!this._running || this._bossMode || this._reflexMode) return;
+    if (this._wave < 3) return;
+
+    // Activate color-match system
+    if (!this._colorMatchActive) {
+      this._colorMatchActive = true;
+      this._rotateColorMatch();
+    }
+  }
+
+  _rotateColorMatch() {
+    if (!this._running || !this._colorMatchActive) return;
+    const pick = COLOR_MATCH_COLORS[Math.floor(Math.random() * COLOR_MATCH_COLORS.length)];
+    this._colorMatchRequired = pick.id;
+    // Update HUD
+    document.dispatchEvent(new CustomEvent('color-match-change', {
+      detail: { id: pick.id, emoji: pick.emoji, color: pick.color },
+    }));
+    // Rotate every 5-8s
+    const delay = 5000 + Math.random() * 3000;
+    setTimeout(() => { if (this._running && this._colorMatchActive) this._rotateColorMatch(); }, delay);
+  }
+
+  _spawnColorMatchTarget() {
+    const pick = COLOR_MATCH_COLORS[Math.floor(Math.random() * COLOR_MATCH_COLORS.length)];
+    const spawnPos = this._pick360Position();
+
+    this._spawnTelegraph(spawnPos, 'standard');
+    setTimeout(() => {
+      if (!this._running) return;
+
+      const settings = getSettings();
+      const el = document.createElement('a-entity');
+      el.setAttribute('class', 'target');
+      const geoPrimitive = pick.shape.replace('a-', '');
+      el.setAttribute('geometry', `primitive: ${geoPrimitive}; radius: 0.3`);
+      const color = remapColor(pick.color, settings);
+      el.setAttribute('material', `color: ${color}; metalness: 0.7; roughness: 0.2; emissive: ${color}; emissiveIntensity: 0.6`);
+      el.setAttribute('position', `${spawnPos.x} ${spawnPos.y} ${spawnPos.z}`);
+      el.setAttribute('shadow', 'cast: true; receive: false');
+      el.setAttribute('target-hit', 'hp: 1; targetType: standard');
+      el.setAttribute('animation__spawn', { property: 'scale', from: '0 0 0', to: '1 1 1', dur: 300, easing: 'easeOutElastic' });
+
+      // Pulsing glow ring
+      const ring = document.createElement('a-torus');
+      ring.setAttribute('radius', '0.4');
+      ring.setAttribute('radius-tubular', '0.015');
+      ring.setAttribute('material', `shader: flat; color: ${color}; opacity: 0.4; transparent: true`);
+      ring.setAttribute('animation__pulse', {
+        property: 'material.opacity', from: 0.2, to: 0.6,
+        dur: 500, loop: true, dir: 'alternate', easing: 'easeInOutSine',
+      });
+      el.appendChild(ring);
+
+      el._targetType = 'standard';
+      el._targetPoints = 30;
+      el._targetCoins = 0;
+      el._colorMatchColor = pick.id;
+      el._spawnReadyTime = Date.now();
+
+      el.addEventListener('destroyed', (evt) => {
+        const damage = evt?.detail?.damage || 1;
+        const hitPos = evt?.detail?.position || null;
+        this._onTargetHit(el, damage, hitPos);
+      });
+
+      const lifetime = this._getEffectiveLifetime();
+      el._expireTimeout = setTimeout(() => {
+        if (this._targets.has(el)) this._removeTarget(el, true);
+      }, lifetime);
+
+      this._container.appendChild(el);
+      this._targets.add(el);
+      audioManager.playSpawn(spawnPos);
+    }, 500);
+  }
+
+  // ==================== TASK-303: Blink Targets ====================
+
+  _updateBlinkTargets() {
+    if (!this._running) return;
+    const now = Date.now();
+    this._targets.forEach(el => {
+      if (el._targetType !== 'blink') return;
+      if (now - el._lastBlinkTime >= el._blinkInterval) {
+        el._blinkVisible = !el._blinkVisible;
+        el._lastBlinkTime = now;
+        if (el._blinkVisible) {
+          el.setAttribute('material', 'opacity', 1.0);
+          el.setAttribute('material', 'emissiveIntensity', 0.8);
+          // Remove wireframe overlay if exists
+          const wire = el.querySelector('[data-blink-wire]');
+          if (wire) wire.setAttribute('visible', 'false');
+        } else {
+          el.setAttribute('material', 'opacity', 0.2);
+          el.setAttribute('material', 'emissiveIntensity', 0.1);
+          // Show wireframe overlay for ghost state
+          let wire = el.querySelector('[data-blink-wire]');
+          if (!wire) {
+            wire = document.createElement('a-sphere');
+            wire.setAttribute('radius', '0.32');
+            wire.setAttribute('material', 'color: #ff00ff; wireframe: true; opacity: 0.3; transparent: true');
+            wire.setAttribute('data-blink-wire', '');
+            el.appendChild(wire);
+          }
+          wire.setAttribute('visible', 'true');
+        }
+      }
+    });
+  }
+
+  // ==================== TASK-304: Peripheral Vision ====================
+
+  _pickPeripheralPosition() {
+    const cam = document.getElementById('camera');
+    if (!cam || !cam.object3D) return this._pick360Position();
+
+    const camRot = cam.object3D.rotation;
+    const forward = new THREE.Vector3(0, 0, -1).applyEuler(camRot);
+
+    // Pick angle 90-150° to left or right
+    const side = Math.random() < 0.5 ? 1 : -1;
+    const angle = (90 + Math.random() * 60) * side * (Math.PI / 180);
+
+    // Rotate forward vector by angle around Y axis
+    const cosA = Math.cos(angle);
+    const sinA = Math.sin(angle);
+    const dir = {
+      x: forward.x * cosA + forward.z * sinA,
+      z: -forward.x * sinA + forward.z * cosA,
+    };
+
+    const dist = 6 + Math.random() * 6;
+    const y = 1 + Math.random() * 3;
+    const rig = document.getElementById('player-rig');
+    const rigPos = rig?.object3D?.position || { x: 0, y: 0, z: 0 };
+
+    return {
+      x: rigPos.x + dir.x * dist,
+      y,
+      z: rigPos.z + dir.z * dist,
+    };
   }
 }
 
