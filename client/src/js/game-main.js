@@ -334,6 +334,7 @@ const THEME_PARTICLES = {
   sunset: { dust: '#ffccaa', sparks: '#ff6600', debris: '#ff4400' },
   space:  { dust: '#8899cc', sparks: '#4488ff', debris: '#6644ff' },
   neon:   { dust: '#ff88ff', sparks: '#ff00ff', debris: '#00ffff' },
+  day:    { dust: '#ffffcc', sparks: '#44cc88', debris: '#88bbdd' },
 };
 
 function _spawnAmbientParticles(sceneEl) {

@@ -17,12 +17,53 @@ const THEMES = {
     ],
     shadowLight: { color: '#4466ff', intensity: 0.6, position: '5 12 5' },
     pillarColor: '#1a1a4e',
-    wallColor: '#0044aa',
-    wallOpacity: 0.12,
+    barrierColor: '#0044aa',
     floorRingColor1: '#00d4ff',
     floorRingColor2: '#ff44aa',
     pillarGlowColor: '#00d4ff',
-    // Decorations defined in HTML (default arena)
+    baseGlowColor: '#0088ff',
+    cornerGlowColor: '#0088ff',
+    // Sky gradient: bottom → top
+    skyGradient: { bottom: '#0a0a2e', mid: '#0a0a1a', top: '#050520' },
+    // Floor fade color
+    floorFadeColor: '#0a0a1a',
+    // Platform
+    platformSlabColor: '#0a0a22',
+    edgeGlowColor: '#0088ff',
+    underGlowColor: '#0088ff',
+    underGlowRing1: '#0088ff',
+    underGlowRing2: '#00d4ff',
+    // Below void
+    belowEnv: [
+      // Data grid far below
+      { tag: 'a-plane', position: '0 -50 0', rotation: '-90 0 0', width: '200', height: '200', material: 'color: #0a0a2e; wireframe: true; opacity: 0.06; shader: flat', 'segments-width': '40', 'segments-height': '40' },
+      // Vertical data streams
+      { tag: 'a-plane', position: '-5 -15 -8', width: '0.03', height: '20', material: 'shader: flat; color: #4466ff; emissive: #4466ff; emissiveIntensity: 1; opacity: 0.08', animation: 'property: position; from: -5 -15 -8; to: -5 -25 -8; dur: 4000; loop: true; easing: linear' },
+      { tag: 'a-plane', position: '8 -12 -5', width: '0.03', height: '15', material: 'shader: flat; color: #00d4ff; emissive: #00d4ff; emissiveIntensity: 1; opacity: 0.06', animation: 'property: position; from: 8 -12 -5; to: 8 -22 -5; dur: 5000; loop: true; easing: linear' },
+      { tag: 'a-plane', position: '-10 -18 3', width: '0.03', height: '18', material: 'shader: flat; color: #4466ff; emissive: #4466ff; emissiveIntensity: 1; opacity: 0.07', animation: 'property: position; from: -10 -18 3; to: -10 -28 3; dur: 3500; loop: true; easing: linear' },
+      { tag: 'a-plane', position: '3 -10 6', width: '0.02', height: '12', material: 'shader: flat; color: #00d4ff; emissive: #00d4ff; emissiveIntensity: 1; opacity: 0.05', animation: 'property: position; from: 3 -10 6; to: 3 -20 6; dur: 4500; loop: true; easing: linear' },
+    ],
+    // Distant environment
+    distantEnv: [
+      // Cyber buildings (front)
+      { tag: 'a-box', position: '-20 5 -40', width: '4', height: '10', depth: '4', material: 'color: #0a0a2e; metalness: 0.9; roughness: 0.2; emissive: #112244; emissiveIntensity: 0.3' },
+      { tag: 'a-box', position: '-12 8 -45', width: '3', height: '16', depth: '3', material: 'color: #0a0a2e; metalness: 0.9; roughness: 0.2; emissive: #112244; emissiveIntensity: 0.3' },
+      { tag: 'a-box', position: '0 6 -42', width: '5', height: '12', depth: '5', material: 'color: #0a0a2e; metalness: 0.9; roughness: 0.2; emissive: #0a1133; emissiveIntensity: 0.3' },
+      { tag: 'a-box', position: '14 9 -48', width: '3.5', height: '18', depth: '3.5', material: 'color: #0a0a2e; metalness: 0.9; roughness: 0.2; emissive: #112244; emissiveIntensity: 0.3' },
+      { tag: 'a-box', position: '22 4 -38', width: '3', height: '8', depth: '3', material: 'color: #0a0a2e; metalness: 0.9; roughness: 0.2; emissive: #0a1133; emissiveIntensity: 0.2' },
+      // Window strips on buildings (emissive lines)
+      { tag: 'a-plane', position: '-20 6 -37.9', width: '3', height: '0.08', material: 'shader: flat; color: #4466ff; emissive: #4466ff; emissiveIntensity: 1; opacity: 0.5', animation: 'property: material.opacity; from: 0.3; to: 0.6; dur: 2000; loop: true; dir: alternate' },
+      { tag: 'a-plane', position: '-12 10 -43.4', width: '2', height: '0.08', material: 'shader: flat; color: #00d4ff; emissive: #00d4ff; emissiveIntensity: 1; opacity: 0.5', animation: 'property: material.opacity; from: 0.3; to: 0.7; dur: 2500; loop: true; dir: alternate' },
+      { tag: 'a-plane', position: '14 12 -46.2', width: '2.5', height: '0.08', material: 'shader: flat; color: #4466ff; emissive: #4466ff; emissiveIntensity: 1; opacity: 0.6', animation: 'property: material.opacity; from: 0.4; to: 0.7; dur: 1800; loop: true; dir: alternate' },
+      // Left side buildings
+      { tag: 'a-box', position: '-38 7 -10', width: '4', height: '14', depth: '4', material: 'color: #0a0a2e; metalness: 0.9; roughness: 0.2; emissive: #112244; emissiveIntensity: 0.2' },
+      { tag: 'a-box', position: '-42 5 -5', width: '3', height: '10', depth: '3', material: 'color: #0a0a2e; metalness: 0.9; roughness: 0.2; emissive: #0a1133; emissiveIntensity: 0.2' },
+      // Right side buildings
+      { tag: 'a-box', position: '38 6 -8', width: '3.5', height: '12', depth: '3.5', material: 'color: #0a0a2e; metalness: 0.9; roughness: 0.2; emissive: #112244; emissiveIntensity: 0.2' },
+      { tag: 'a-box', position: '44 4  0', width: '3', height: '8', depth: '3', material: 'color: #0a0a2e; metalness: 0.9; roughness: 0.2; emissive: #0a1133; emissiveIntensity: 0.2' },
+      // Grid horizon line (front)
+      { tag: 'a-plane', position: '0 0.02 -35', rotation: '-90 0 0', width: '80', height: '0.06', material: 'shader: flat; color: #4466ff; emissive: #4466ff; emissiveIntensity: 1; opacity: 0.15' },
+    ],
     decorations: [],
   },
   sunset: {
@@ -43,18 +84,44 @@ const THEMES = {
     ],
     shadowLight: { color: '#ff8844', intensity: 0.5, position: '5 12 5' },
     pillarColor: '#3a2211',
-    wallColor: '#663311',
-    wallOpacity: 0.12,
+    barrierColor: '#663311',
     floorRingColor1: '#ff6600',
     floorRingColor2: '#ff2200',
     pillarGlowColor: '#ff8844',
-    decorations: [
-      // Sunset horizon glow
-      { tag: 'a-sphere', position: '0 1 -30', radius: '8', material: 'shader: flat; color: #ff4400; opacity: 0.06' },
-      { tag: 'a-sphere', position: '0 0 -28', radius: '12', material: 'shader: flat; color: #ff8800; opacity: 0.03' },
-      // Heat haze rings
+    baseGlowColor: '#ff6600',
+    cornerGlowColor: '#ff6600',
+    skyGradient: { bottom: '#ff4400', mid: '#661100', top: '#1a0a05' },
+    floorFadeColor: '#1a0a05',
+    platformSlabColor: '#2a1508',
+    edgeGlowColor: '#ff6600',
+    underGlowColor: '#ff4400',
+    underGlowRing1: '#ff6600',
+    underGlowRing2: '#ff8844',
+    belowEnv: [
+      // Cloud layer below
+      { tag: 'a-plane', position: '-8 -6 -5', rotation: '-90 0 0', width: '20', height: '15', material: 'shader: flat; color: #ffccaa; opacity: 0.12; transparent: true' },
+      { tag: 'a-plane', position: '10 -8 5', rotation: '-90 0 0', width: '25', height: '18', material: 'shader: flat; color: #ff8855; opacity: 0.08; transparent: true' },
+      { tag: 'a-plane', position: '0 -10 -10', rotation: '-90 0 0', width: '30', height: '20', material: 'shader: flat; color: #ffaa77; opacity: 0.06; transparent: true' },
+      // Distant ground far below
+      { tag: 'a-plane', position: '0 -40 0', rotation: '-90 0 0', width: '200', height: '200', material: 'shader: flat; color: #1a0800; opacity: 0.15' },
+    ],
+    distantEnv: [
+      // Large sun near horizon
+      { tag: 'a-sphere', position: '0 4 -55', radius: '8', material: 'shader: flat; color: #ff6600; emissive: #ff6600; emissiveIntensity: 1; opacity: 0.3' },
+      { tag: 'a-sphere', position: '0 4 -55', radius: '10', material: 'shader: flat; color: #ff4400; opacity: 0.08' },
+      // Mountain silhouettes (front)
+      { tag: 'a-cone', position: '-25 3 -50', 'radius-bottom': '12', 'radius-top': '0', height: '10', material: 'shader: flat; color: #1a0800; opacity: 0.7' },
+      { tag: 'a-cone', position: '-8 4 -48', 'radius-bottom': '10', 'radius-top': '0', height: '12', material: 'shader: flat; color: #1a0800; opacity: 0.6' },
+      { tag: 'a-cone', position: '10 3.5 -52', 'radius-bottom': '14', 'radius-top': '0', height: '11', material: 'shader: flat; color: #1a0800; opacity: 0.65' },
+      { tag: 'a-cone', position: '28 2.5 -46', 'radius-bottom': '10', 'radius-top': '0', height: '8', material: 'shader: flat; color: #1a0800; opacity: 0.7' },
+      // Left mountains
+      { tag: 'a-cone', position: '-40 3 -20', 'radius-bottom': '10', 'radius-top': '0', height: '9', material: 'shader: flat; color: #1a0800; opacity: 0.5' },
+      // Right mountains
+      { tag: 'a-cone', position: '42 2.5 -15', 'radius-bottom': '8', 'radius-top': '0', height: '7', material: 'shader: flat; color: #1a0800; opacity: 0.5' },
+      // Heat haze ring
       { tag: 'a-torus', position: '0 0.5 -10', rotation: '-90 0 0', radius: '6', 'radius-tubular': '0.05', material: 'color: #ff6600; emissive: #ff6600; emissiveIntensity: 0.4; opacity: 0.08', animation: 'property: rotation; from: -90 0 0; to: -90 0 360; dur: 25000; easing: linear; loop: true' },
     ],
+    decorations: [],
   },
   space: {
     id: 'space',
@@ -74,54 +141,64 @@ const THEMES = {
     ],
     shadowLight: { color: '#2244ff', intensity: 0.4, position: '5 12 5' },
     pillarColor: '#080820',
-    wallColor: '#0a1133',
-    wallOpacity: 0.06,
+    barrierColor: '#0a1133',
     floorRingColor1: '#2244ff',
     floorRingColor2: '#6644ff',
     pillarGlowColor: '#4488ff',
-    decorations: [
-      // === PLANET (distant, large) ===
-      { tag: 'a-sphere', position: '20 15 -35', radius: '6', material: 'color: #334488; metalness: 0.3; roughness: 0.7; emissive: #112244; emissiveIntensity: 0.3' },
-      // Planet ring
-      { tag: 'a-torus', position: '20 15 -35', rotation: '20 0 10', radius: '8', 'radius-tubular': '0.15', material: 'color: #556699; emissive: #334466; emissiveIntensity: 0.3; opacity: 0.25', animation: 'property: rotation; from: 20 0 10; to: 20 360 10; dur: 60000; easing: linear; loop: true' },
-      // Planet glow
-      { tag: 'a-sphere', position: '20 15 -35', radius: '7', material: 'shader: flat; color: #2244aa; opacity: 0.04' },
-
-      // === MOON ===
-      { tag: 'a-sphere', position: '-15 10 -25', radius: '2', material: 'color: #aaaacc; metalness: 0.2; roughness: 0.8; emissive: #333344; emissiveIntensity: 0.2' },
-
-      // === ASTEROID BELT (icosahedrons + spheres, scattered) ===
-      { tag: 'a-icosahedron', position: '-8 7 -18', radius: '0.4', material: 'color: #444455; metalness: 0.6; roughness: 0.5', animation: 'property: rotation; to: 360 180 90; dur: 8000; easing: linear; loop: true' },
-      { tag: 'a-icosahedron', position: '10 9 -20', radius: '0.3', material: 'color: #555566; metalness: 0.7; roughness: 0.4', animation: 'property: rotation; to: 180 360 0; dur: 10000; easing: linear; loop: true' },
-      { tag: 'a-icosahedron', position: '-12 11 -22', radius: '0.5', material: 'color: #3a3a4a; metalness: 0.5; roughness: 0.6', animation: 'property: rotation; to: 90 270 360; dur: 12000; easing: linear; loop: true' },
-      { tag: 'a-icosahedron', position: '6 8 -16', radius: '0.25', material: 'color: #4a4a5a; metalness: 0.6; roughness: 0.5', animation: 'property: rotation; to: 270 90 180; dur: 7000; easing: linear; loop: true' },
-      { tag: 'a-sphere', position: '14 10 -19', radius: '0.35', material: 'color: #555566; metalness: 0.8; roughness: 0.3', animation: 'property: rotation; to: 360 0 180; dur: 9000; easing: linear; loop: true' },
-      { tag: 'a-icosahedron', position: '-5 12 -24', radius: '0.6', material: 'color: #3a3a4e; metalness: 0.5; roughness: 0.6', animation: 'property: rotation; to: 0 360 180; dur: 14000; easing: linear; loop: true' },
-
-      // === NEBULA CLOUDS (large, colorful, very faint) ===
-      { tag: 'a-sphere', position: '-18 8 -28', radius: '5', material: 'shader: flat; color: #4422aa; opacity: 0.04' },
-      { tag: 'a-sphere', position: '15 12 -30', radius: '6', material: 'shader: flat; color: #aa2266; opacity: 0.03' },
-      { tag: 'a-sphere', position: '0 15 -32', radius: '7', material: 'shader: flat; color: #2244aa; opacity: 0.035' },
-      { tag: 'a-sphere', position: '-10 18 -26', radius: '4', material: 'shader: flat; color: #662288; opacity: 0.03' },
-
-      // === DENSE STAR FIELD ===
-      { tag: 'a-sphere', position: '-10 9 -18', radius: '0.05', material: 'shader: flat; color: #ffffff; opacity: 0.5', animation: 'property: material.opacity; from: 0.2; to: 0.6; dur: 1500; loop: true; dir: alternate' },
-      { tag: 'a-sphere', position: '12 11 -16', radius: '0.04', material: 'shader: flat; color: #aaccff; opacity: 0.4', animation: 'property: material.opacity; from: 0.15; to: 0.5; dur: 1800; loop: true; dir: alternate' },
-      { tag: 'a-sphere', position: '-6 14 -20', radius: '0.06', material: 'shader: flat; color: #ffffff; opacity: 0.45', animation: 'property: material.opacity; from: 0.2; to: 0.6; dur: 2200; loop: true; dir: alternate' },
-      { tag: 'a-sphere', position: '8 12 -22', radius: '0.035', material: 'shader: flat; color: #ffddaa; opacity: 0.35', animation: 'property: material.opacity; from: 0.1; to: 0.5; dur: 2500; loop: true; dir: alternate' },
-      { tag: 'a-sphere', position: '-15 16 -25', radius: '0.05', material: 'shader: flat; color: #ffffff; opacity: 0.3', animation: 'property: material.opacity; from: 0.15; to: 0.45; dur: 2000; loop: true; dir: alternate' },
-      { tag: 'a-sphere', position: '5 18 -28', radius: '0.07', material: 'shader: flat; color: #aaaaff; opacity: 0.25', animation: 'property: material.opacity; from: 0.1; to: 0.4; dur: 3000; loop: true; dir: alternate' },
-      { tag: 'a-sphere', position: '-3 10 -14', radius: '0.03', material: 'shader: flat; color: #ffffff; opacity: 0.5', animation: 'property: material.opacity; from: 0.25; to: 0.6; dur: 1600; loop: true; dir: alternate' },
-      { tag: 'a-sphere', position: '16 14 -24', radius: '0.04', material: 'shader: flat; color: #ffccff; opacity: 0.35', animation: 'property: material.opacity; from: 0.15; to: 0.5; dur: 2100; loop: true; dir: alternate' },
-      { tag: 'a-sphere', position: '-18 12 -17', radius: '0.045', material: 'shader: flat; color: #ffffff; opacity: 0.4', animation: 'property: material.opacity; from: 0.2; to: 0.55; dur: 1700; loop: true; dir: alternate' },
-      { tag: 'a-sphere', position: '0 20 -30', radius: '0.08', material: 'shader: flat; color: #88aaff; opacity: 0.2', animation: 'property: material.opacity; from: 0.1; to: 0.35; dur: 2800; loop: true; dir: alternate' },
-      { tag: 'a-sphere', position: '18 8 -15', radius: '0.03', material: 'shader: flat; color: #ffffff; opacity: 0.45', animation: 'property: material.opacity; from: 0.2; to: 0.55; dur: 1400; loop: true; dir: alternate' },
-      { tag: 'a-sphere', position: '-20 15 -23', radius: '0.05', material: 'shader: flat; color: #ccddff; opacity: 0.3', animation: 'property: material.opacity; from: 0.1; to: 0.45; dur: 2600; loop: true; dir: alternate' },
-
-      // === SPACE STATION RING ===
-      { tag: 'a-torus', position: '-12 6 -20', radius: '2', 'radius-tubular': '0.06', material: 'color: #334466; metalness: 0.9; roughness: 0.1; emissive: #112244; emissiveIntensity: 0.3', animation: 'property: rotation; to: 360 0 0; dur: 15000; easing: linear; loop: true' },
-      { tag: 'a-torus', position: '-12 6 -20', radius: '2.5', 'radius-tubular': '0.03', material: 'color: #4466aa; emissive: #4466aa; emissiveIntensity: 0.5; opacity: 0.2', animation: 'property: rotation; to: 0 360 0; dur: 20000; easing: linear; loop: true' },
+    baseGlowColor: '#2244ff',
+    cornerGlowColor: '#2244ff',
+    skyGradient: { bottom: '#050515', mid: '#010105', top: '#010105' },
+    floorFadeColor: '#010105',
+    platformSlabColor: '#040412',
+    edgeGlowColor: '#2244ff',
+    underGlowColor: '#2244ff',
+    underGlowRing1: '#2244ff',
+    underGlowRing2: '#6644ff',
+    belowEnv: [
+      // Star clusters below
+      { tag: 'a-sphere', position: '-8 -15 -5', radius: '0.04', material: 'shader: flat; color: #ffffff; opacity: 0.4', animation: 'property: material.opacity; from: 0.2; to: 0.5; dur: 2000; loop: true; dir: alternate' },
+      { tag: 'a-sphere', position: '12 -20 3', radius: '0.05', material: 'shader: flat; color: #aaccff; opacity: 0.35', animation: 'property: material.opacity; from: 0.15; to: 0.45; dur: 2400; loop: true; dir: alternate' },
+      { tag: 'a-sphere', position: '-3 -25 8', radius: '0.06', material: 'shader: flat; color: #ffffff; opacity: 0.3', animation: 'property: material.opacity; from: 0.1; to: 0.4; dur: 1800; loop: true; dir: alternate' },
+      { tag: 'a-sphere', position: '6 -12 -10', radius: '0.03', material: 'shader: flat; color: #ffddaa; opacity: 0.35', animation: 'property: material.opacity; from: 0.15; to: 0.45; dur: 2200; loop: true; dir: alternate' },
+      { tag: 'a-sphere', position: '-15 -18 0', radius: '0.05', material: 'shader: flat; color: #ffffff; opacity: 0.25', animation: 'property: material.opacity; from: 0.1; to: 0.35; dur: 2600; loop: true; dir: alternate' },
+      { tag: 'a-sphere', position: '10 -30 -8', radius: '0.07', material: 'shader: flat; color: #8888ff; opacity: 0.2', animation: 'property: material.opacity; from: 0.1; to: 0.3; dur: 3000; loop: true; dir: alternate' },
+      // Distant nebula below
+      { tag: 'a-sphere', position: '0 -35 0', radius: '8', material: 'shader: flat; color: #221144; opacity: 0.04' },
+      { tag: 'a-sphere', position: '-12 -40 -10', radius: '6', material: 'shader: flat; color: #441122; opacity: 0.03' },
     ],
+    distantEnv: [
+      // Large planet
+      { tag: 'a-sphere', position: '25 18 -50', radius: '8', material: 'color: #334488; metalness: 0.3; roughness: 0.7; emissive: #112244; emissiveIntensity: 0.3' },
+      { tag: 'a-torus', position: '25 18 -50', rotation: '20 0 10', radius: '10', 'radius-tubular': '0.2', material: 'color: #556699; emissive: #334466; emissiveIntensity: 0.3; opacity: 0.25', animation: 'property: rotation; from: 20 0 10; to: 20 360 10; dur: 60000; easing: linear; loop: true' },
+      { tag: 'a-sphere', position: '25 18 -50', radius: '9', material: 'shader: flat; color: #2244aa; opacity: 0.04' },
+      // Moon
+      { tag: 'a-sphere', position: '-20 12 -40', radius: '2.5', material: 'color: #aaaacc; metalness: 0.2; roughness: 0.8; emissive: #333344; emissiveIntensity: 0.2' },
+      // Asteroids
+      { tag: 'a-icosahedron', position: '-10 8 -30', radius: '0.5', material: 'color: #444455; metalness: 0.6; roughness: 0.5', animation: 'property: rotation; to: 360 180 90; dur: 8000; easing: linear; loop: true' },
+      { tag: 'a-icosahedron', position: '12 10 -35', radius: '0.4', material: 'color: #555566; metalness: 0.7; roughness: 0.4', animation: 'property: rotation; to: 180 360 0; dur: 10000; easing: linear; loop: true' },
+      { tag: 'a-icosahedron', position: '-30 14 -42', radius: '0.7', material: 'color: #3a3a4a; metalness: 0.5; roughness: 0.6', animation: 'property: rotation; to: 90 270 360; dur: 12000; easing: linear; loop: true' },
+      // Space station
+      { tag: 'a-torus', position: '-15 8 -35', radius: '2.5', 'radius-tubular': '0.08', material: 'color: #334466; metalness: 0.9; roughness: 0.1; emissive: #112244; emissiveIntensity: 0.3', animation: 'property: rotation; to: 360 0 0; dur: 15000; easing: linear; loop: true' },
+      { tag: 'a-torus', position: '-15 8 -35', radius: '3', 'radius-tubular': '0.04', material: 'color: #4466aa; emissive: #4466aa; emissiveIntensity: 0.5; opacity: 0.2', animation: 'property: rotation; to: 0 360 0; dur: 20000; easing: linear; loop: true' },
+      // Nebula clouds
+      { tag: 'a-sphere', position: '-25 10 -45', radius: '6', material: 'shader: flat; color: #4422aa; opacity: 0.04' },
+      { tag: 'a-sphere', position: '18 15 -50', radius: '8', material: 'shader: flat; color: #aa2266; opacity: 0.03' },
+      { tag: 'a-sphere', position: '0 20 -55', radius: '10', material: 'shader: flat; color: #2244aa; opacity: 0.035' },
+      // Dense star field
+      { tag: 'a-sphere', position: '-12 10 -30', radius: '0.05', material: 'shader: flat; color: #ffffff; opacity: 0.5', animation: 'property: material.opacity; from: 0.2; to: 0.6; dur: 1500; loop: true; dir: alternate' },
+      { tag: 'a-sphere', position: '14 13 -28', radius: '0.04', material: 'shader: flat; color: #aaccff; opacity: 0.4', animation: 'property: material.opacity; from: 0.15; to: 0.5; dur: 1800; loop: true; dir: alternate' },
+      { tag: 'a-sphere', position: '-8 16 -35', radius: '0.06', material: 'shader: flat; color: #ffffff; opacity: 0.45', animation: 'property: material.opacity; from: 0.2; to: 0.6; dur: 2200; loop: true; dir: alternate' },
+      { tag: 'a-sphere', position: '10 14 -38', radius: '0.035', material: 'shader: flat; color: #ffddaa; opacity: 0.35', animation: 'property: material.opacity; from: 0.1; to: 0.5; dur: 2500; loop: true; dir: alternate' },
+      { tag: 'a-sphere', position: '-18 18 -42', radius: '0.05', material: 'shader: flat; color: #ffffff; opacity: 0.3', animation: 'property: material.opacity; from: 0.15; to: 0.45; dur: 2000; loop: true; dir: alternate' },
+      { tag: 'a-sphere', position: '6 20 -48', radius: '0.07', material: 'shader: flat; color: #aaaaff; opacity: 0.25', animation: 'property: material.opacity; from: 0.1; to: 0.4; dur: 3000; loop: true; dir: alternate' },
+      { tag: 'a-sphere', position: '-5 11 -26', radius: '0.03', material: 'shader: flat; color: #ffffff; opacity: 0.5', animation: 'property: material.opacity; from: 0.25; to: 0.6; dur: 1600; loop: true; dir: alternate' },
+      { tag: 'a-sphere', position: '20 16 -40', radius: '0.04', material: 'shader: flat; color: #ffccff; opacity: 0.35', animation: 'property: material.opacity; from: 0.15; to: 0.5; dur: 2100; loop: true; dir: alternate' },
+      { tag: 'a-sphere', position: '-22 13 -32', radius: '0.045', material: 'shader: flat; color: #ffffff; opacity: 0.4', animation: 'property: material.opacity; from: 0.2; to: 0.55; dur: 1700; loop: true; dir: alternate' },
+      { tag: 'a-sphere', position: '0 22 -52', radius: '0.08', material: 'shader: flat; color: #88aaff; opacity: 0.2', animation: 'property: material.opacity; from: 0.1; to: 0.35; dur: 2800; loop: true; dir: alternate' },
+      { tag: 'a-sphere', position: '22 9 -25', radius: '0.03', material: 'shader: flat; color: #ffffff; opacity: 0.45', animation: 'property: material.opacity; from: 0.2; to: 0.55; dur: 1400; loop: true; dir: alternate' },
+      { tag: 'a-sphere', position: '-28 17 -44', radius: '0.05', material: 'shader: flat; color: #ccddff; opacity: 0.3', animation: 'property: material.opacity; from: 0.1; to: 0.45; dur: 2600; loop: true; dir: alternate' },
+    ],
+    decorations: [],
   },
   neon: {
     id: 'neon',
@@ -141,51 +218,193 @@ const THEMES = {
     ],
     shadowLight: { color: '#ff00ff', intensity: 0.5, position: '5 12 5' },
     pillarColor: '#220044',
-    wallColor: '#440088',
-    wallOpacity: 0.15,
+    barrierColor: '#440088',
     floorRingColor1: '#ff00ff',
     floorRingColor2: '#00ffff',
     pillarGlowColor: '#ff00ff',
-    decorations: [
-      // Neon building silhouettes (boxes, distant)
-      { tag: 'a-box', position: '-18 4 -22', width: '3', height: '8', depth: '3', material: 'color: #110022; metalness: 0.8; roughness: 0.3; emissive: #220044; emissiveIntensity: 0.2' },
-      { tag: 'a-box', position: '20 6 -25', width: '4', height: '12', depth: '4', material: 'color: #110022; metalness: 0.8; roughness: 0.3; emissive: #220044; emissiveIntensity: 0.2' },
-      { tag: 'a-box', position: '-22 3 -18', width: '2', height: '6', depth: '2', material: 'color: #0a0a1a; metalness: 0.8; roughness: 0.3; emissive: #110033; emissiveIntensity: 0.2' },
-      { tag: 'a-box', position: '16 5 -20', width: '2.5', height: '10', depth: '2.5', material: 'color: #110022; metalness: 0.8; roughness: 0.3; emissive: #220044; emissiveIntensity: 0.2' },
-      // Neon sign strips on buildings
-      { tag: 'a-plane', position: '-18 6 -20.4', width: '2.5', height: '0.15', material: 'shader: flat; color: #ff00ff; emissive: #ff00ff; emissiveIntensity: 1; opacity: 0.6', animation: 'property: material.opacity; from: 0.4; to: 0.8; dur: 1500; loop: true; dir: alternate' },
-      { tag: 'a-plane', position: '20 8 -22.9', width: '3', height: '0.15', material: 'shader: flat; color: #00ffff; emissive: #00ffff; emissiveIntensity: 1; opacity: 0.6', animation: 'property: material.opacity; from: 0.3; to: 0.7; dur: 2000; loop: true; dir: alternate' },
-      { tag: 'a-plane', position: '16 7 -18.7', width: '2', height: '0.1', material: 'shader: flat; color: #ff0088; emissive: #ff0088; emissiveIntensity: 1; opacity: 0.5', animation: 'property: material.opacity; from: 0.3; to: 0.6; dur: 1800; loop: true; dir: alternate' },
-      // Flying neon rings
-      { tag: 'a-torus', position: '0 8 -18', radius: '1', 'radius-tubular': '0.02', material: 'color: #ff00ff; emissive: #ff00ff; emissiveIntensity: 1; opacity: 0.3', animation: 'property: rotation; to: 360 360 0; dur: 8000; easing: linear; loop: true' },
+    baseGlowColor: '#ff00ff',
+    cornerGlowColor: '#ff00ff',
+    skyGradient: { bottom: '#1a0033', mid: '#050510', top: '#0a0020' },
+    floorFadeColor: '#050510',
+    platformSlabColor: '#0a0020',
+    edgeGlowColor: '#ff00ff',
+    underGlowColor: '#ff00ff',
+    underGlowRing1: '#ff00ff',
+    underGlowRing2: '#00ffff',
+    belowEnv: [
+      // City lights below (scattered dots)
+      { tag: 'a-sphere', position: '-8 -15 -5', radius: '0.08', material: 'shader: flat; color: #ff00ff; emissive: #ff00ff; emissiveIntensity: 1; opacity: 0.3', animation: 'property: material.opacity; from: 0.15; to: 0.4; dur: 1500; loop: true; dir: alternate' },
+      { tag: 'a-sphere', position: '12 -20 3', radius: '0.06', material: 'shader: flat; color: #00ffff; emissive: #00ffff; emissiveIntensity: 1; opacity: 0.25', animation: 'property: material.opacity; from: 0.1; to: 0.35; dur: 1800; loop: true; dir: alternate' },
+      { tag: 'a-sphere', position: '-3 -12 8', radius: '0.05', material: 'shader: flat; color: #ff0088; emissive: #ff0088; emissiveIntensity: 1; opacity: 0.3', animation: 'property: material.opacity; from: 0.15; to: 0.4; dur: 2200; loop: true; dir: alternate' },
+      { tag: 'a-sphere', position: '6 -25 -10', radius: '0.07', material: 'shader: flat; color: #00ff88; emissive: #00ff88; emissiveIntensity: 1; opacity: 0.2', animation: 'property: material.opacity; from: 0.1; to: 0.3; dur: 2000; loop: true; dir: alternate' },
+      { tag: 'a-sphere', position: '-15 -18 0', radius: '0.09', material: 'shader: flat; color: #ff00ff; emissive: #ff00ff; emissiveIntensity: 1; opacity: 0.2', animation: 'property: material.opacity; from: 0.1; to: 0.3; dur: 2500; loop: true; dir: alternate' },
+      { tag: 'a-sphere', position: '10 -30 -8', radius: '0.06', material: 'shader: flat; color: #00ffff; emissive: #00ffff; emissiveIntensity: 1; opacity: 0.15', animation: 'property: material.opacity; from: 0.08; to: 0.25; dur: 1700; loop: true; dir: alternate' },
+      { tag: 'a-sphere', position: '0 -22 5', radius: '0.05', material: 'shader: flat; color: #ff0088; emissive: #ff0088; emissiveIntensity: 1; opacity: 0.25', animation: 'property: material.opacity; from: 0.1; to: 0.35; dur: 1900; loop: true; dir: alternate' },
+      { tag: 'a-sphere', position: '-12 -28 -3', radius: '0.08', material: 'shader: flat; color: #00ff88; emissive: #00ff88; emissiveIntensity: 1; opacity: 0.15', animation: 'property: material.opacity; from: 0.08; to: 0.25; dur: 2300; loop: true; dir: alternate' },
+      // Neon haze below
+      { tag: 'a-sphere', position: '0 -20 0', radius: '15', material: 'shader: flat; color: #220044; opacity: 0.05' },
     ],
+    distantEnv: [
+      // Neon city skyline (front)
+      { tag: 'a-box', position: '-22 6 -38', width: '4', height: '12', depth: '4', material: 'color: #110022; metalness: 0.8; roughness: 0.3; emissive: #220044; emissiveIntensity: 0.3' },
+      { tag: 'a-box', position: '-10 10 -44', width: '5', height: '20', depth: '5', material: 'color: #110022; metalness: 0.8; roughness: 0.3; emissive: #220044; emissiveIntensity: 0.3' },
+      { tag: 'a-box', position: '5 7 -40', width: '3.5', height: '14', depth: '3.5', material: 'color: #110022; metalness: 0.8; roughness: 0.3; emissive: #110033; emissiveIntensity: 0.3' },
+      { tag: 'a-box', position: '18 9 -46', width: '4', height: '18', depth: '4', material: 'color: #110022; metalness: 0.8; roughness: 0.3; emissive: #220044; emissiveIntensity: 0.3' },
+      { tag: 'a-box', position: '28 5 -36', width: '3', height: '10', depth: '3', material: 'color: #110022; metalness: 0.8; roughness: 0.3; emissive: #110033; emissiveIntensity: 0.2' },
+      // Neon sign strips
+      { tag: 'a-plane', position: '-22 8 -35.9', width: '3', height: '0.12', material: 'shader: flat; color: #ff00ff; emissive: #ff00ff; emissiveIntensity: 1; opacity: 0.6', animation: 'property: material.opacity; from: 0.4; to: 0.8; dur: 1500; loop: true; dir: alternate' },
+      { tag: 'a-plane', position: '-10 14 -41.4', width: '4', height: '0.12', material: 'shader: flat; color: #00ffff; emissive: #00ffff; emissiveIntensity: 1; opacity: 0.6', animation: 'property: material.opacity; from: 0.3; to: 0.7; dur: 2000; loop: true; dir: alternate' },
+      { tag: 'a-plane', position: '18 12 -43.9', width: '3', height: '0.1', material: 'shader: flat; color: #ff0088; emissive: #ff0088; emissiveIntensity: 1; opacity: 0.5', animation: 'property: material.opacity; from: 0.3; to: 0.6; dur: 1800; loop: true; dir: alternate' },
+      { tag: 'a-plane', position: '5 10 -38.2', width: '2.5', height: '0.1', material: 'shader: flat; color: #00ff88; emissive: #00ff88; emissiveIntensity: 1; opacity: 0.5', animation: 'property: material.opacity; from: 0.3; to: 0.7; dur: 2200; loop: true; dir: alternate' },
+      // Left side buildings
+      { tag: 'a-box', position: '-38 8 -12', width: '4', height: '16', depth: '4', material: 'color: #110022; metalness: 0.8; roughness: 0.3; emissive: #220044; emissiveIntensity: 0.2' },
+      { tag: 'a-plane', position: '-35.9 10 -12', rotation: '0 90 0', width: '3', height: '0.1', material: 'shader: flat; color: #ff00ff; emissive: #ff00ff; emissiveIntensity: 1; opacity: 0.5', animation: 'property: material.opacity; from: 0.3; to: 0.6; dur: 1600; loop: true; dir: alternate' },
+      // Right side buildings
+      { tag: 'a-box', position: '40 7 -6', width: '3.5', height: '14', depth: '3.5', material: 'color: #110022; metalness: 0.8; roughness: 0.3; emissive: #220044; emissiveIntensity: 0.2' },
+      { tag: 'a-plane', position: '38.2 9 -6', rotation: '0 90 0', width: '2.5', height: '0.1', material: 'shader: flat; color: #00ffff; emissive: #00ffff; emissiveIntensity: 1; opacity: 0.5', animation: 'property: material.opacity; from: 0.3; to: 0.7; dur: 1900; loop: true; dir: alternate' },
+      // Flying neon rings
+      { tag: 'a-torus', position: '0 10 -30', radius: '1.2', 'radius-tubular': '0.025', material: 'color: #ff00ff; emissive: #ff00ff; emissiveIntensity: 1; opacity: 0.3', animation: 'property: rotation; to: 360 360 0; dur: 8000; easing: linear; loop: true' },
+      { tag: 'a-torus', position: '-15 12 -35', radius: '0.8', 'radius-tubular': '0.02', material: 'color: #00ffff; emissive: #00ffff; emissiveIntensity: 1; opacity: 0.25', animation: 'property: rotation; to: 0 360 360; dur: 10000; easing: linear; loop: true' },
+    ],
+    decorations: [],
+  },
+  day: {
+    id: 'day',
+    name: 'Open Sky',
+    icon: '☀️',
+    unlockLevel: 1,
+    sky: '#87CEEB',
+    floor: '#aaaaaa',
+    grid: '#999999',
+    gridOpacity: 0.15,
+    lights: [
+      { type: 'ambient', color: '#888888', intensity: 0.8 },
+      { type: 'point', position: '0 10 0', color: '#ffffcc', intensity: 1.5, distance: 50 },
+      { type: 'point', position: '-8 6 -8', color: '#ffeecc', intensity: 0.4, distance: 25 },
+      { type: 'point', position: '8 6 -8', color: '#ccddff', intensity: 0.4, distance: 25 },
+      { type: 'point', position: '0 4 8', color: '#ffffdd', intensity: 0.3, distance: 20 },
+    ],
+    shadowLight: { color: '#ffffee', intensity: 0.8, position: '8 15 5' },
+    pillarColor: '#888899',
+    barrierColor: '#44aaff',
+    floorRingColor1: '#44cc88',
+    floorRingColor2: '#44aaff',
+    pillarGlowColor: '#44cc88',
+    baseGlowColor: '#44aaff',
+    cornerGlowColor: '#44aaff',
+    skyGradient: { bottom: '#b8d4e8', mid: '#87CEEB', top: '#4a90d9' },
+    floorFadeColor: '#87CEEB',
+    platformSlabColor: '#888888',
+    edgeGlowColor: '#44cc88',
+    underGlowColor: '#44aaff',
+    underGlowRing1: '#44cc88',
+    underGlowRing2: '#44aaff',
+    belowEnv: [
+      // Ground far below
+      { tag: 'a-plane', position: '0 -40 0', rotation: '-90 0 0', width: '200', height: '200', material: 'shader: flat; color: #558844; opacity: 0.25' },
+      // Cloud wisps below platform
+      { tag: 'a-sphere', position: '-6 -5 -8', radius: '4', material: 'shader: flat; color: #ffffff; opacity: 0.08' },
+      { tag: 'a-sphere', position: '10 -8 3', radius: '5', material: 'shader: flat; color: #ffffff; opacity: 0.06' },
+      { tag: 'a-sphere', position: '-3 -10 10', radius: '6', material: 'shader: flat; color: #eeeeff; opacity: 0.05' },
+      { tag: 'a-sphere', position: '8 -12 -12', radius: '3.5', material: 'shader: flat; color: #ffffff; opacity: 0.07' },
+      { tag: 'a-sphere', position: '-12 -7 0', radius: '4.5', material: 'shader: flat; color: #ffffff; opacity: 0.06' },
+    ],
+    distantEnv: [
+      // Rolling green hills (front)
+      { tag: 'a-sphere', position: '-20 -2 -45', radius: '12', material: 'shader: flat; color: #4a8844; opacity: 0.5' },
+      { tag: 'a-sphere', position: '5 -3 -50', radius: '15', material: 'shader: flat; color: #3d7a3d; opacity: 0.45' },
+      { tag: 'a-sphere', position: '30 -2.5 -42', radius: '10', material: 'shader: flat; color: #4a8844; opacity: 0.5' },
+      // Left hills
+      { tag: 'a-sphere', position: '-40 -2 -15', radius: '11', material: 'shader: flat; color: #3d7a3d; opacity: 0.4' },
+      { tag: 'a-sphere', position: '-45 -3 5', radius: '9', material: 'shader: flat; color: #4a8844; opacity: 0.35' },
+      // Right hills
+      { tag: 'a-sphere', position: '42 -2 -10', radius: '10', material: 'shader: flat; color: #4a8844; opacity: 0.4' },
+      // Fluffy clouds
+      { tag: 'a-sphere', position: '-15 12 -35', radius: '4', material: 'shader: flat; color: #ffffff; opacity: 0.25' },
+      { tag: 'a-sphere', position: '-13 12.5 -36', radius: '3.5', material: 'shader: flat; color: #ffffff; opacity: 0.2' },
+      { tag: 'a-sphere', position: '20 14 -40', radius: '5', material: 'shader: flat; color: #ffffff; opacity: 0.22' },
+      { tag: 'a-sphere', position: '22 14.5 -41', radius: '4', material: 'shader: flat; color: #ffffff; opacity: 0.18' },
+      { tag: 'a-sphere', position: '-30 10 -25', radius: '3', material: 'shader: flat; color: #ffffff; opacity: 0.2' },
+      { tag: 'a-sphere', position: '35 11 -20', radius: '3.5', material: 'shader: flat; color: #ffffff; opacity: 0.18' },
+      // Tree silhouettes on hills (cone trunk + cone top)
+      { tag: 'a-cone', position: '-18 3 -38', 'radius-bottom': '0.4', 'radius-top': '0', height: '3', material: 'shader: flat; color: #2d5a2d; opacity: 0.6' },
+      { tag: 'a-cone', position: '-15 2.5 -40', 'radius-bottom': '0.5', 'radius-top': '0', height: '3.5', material: 'shader: flat; color: #2d5a2d; opacity: 0.55' },
+      { tag: 'a-cone', position: '8 2 -42', 'radius-bottom': '0.45', 'radius-top': '0', height: '3', material: 'shader: flat; color: #2d5a2d; opacity: 0.6' },
+      { tag: 'a-cone', position: '12 2.5 -44', 'radius-bottom': '0.5', 'radius-top': '0', height: '4', material: 'shader: flat; color: #2d5a2d; opacity: 0.55' },
+      { tag: 'a-cone', position: '28 2 -36', 'radius-bottom': '0.4', 'radius-top': '0', height: '3', material: 'shader: flat; color: #2d5a2d; opacity: 0.6' },
+      // Distant lake
+      { tag: 'a-plane', position: '15 -0.5 -48', rotation: '-90 0 0', width: '12', height: '6', material: 'shader: flat; color: #4488cc; opacity: 0.2' },
+    ],
+    decorations: [],
   },
 };
+
+// Helper: spawn elements from a decoration array into a container
+function _spawnDecorations(container, items, cssClass) {
+  items.forEach(dec => {
+    const el = document.createElement(dec.tag);
+    el.classList.add(cssClass);
+    for (const [key, val] of Object.entries(dec)) {
+      if (key === 'tag') continue;
+      el.setAttribute(key, val);
+    }
+    container.appendChild(el);
+  });
+}
 
 function applyTheme(sceneEl, themeId) {
   const theme = THEMES[themeId] || THEMES.cyber;
   const gc = sceneEl.querySelector('#game-content') || sceneEl;
 
+  // Sky color
   const sky = sceneEl.querySelector('a-sky');
   if (sky) sky.setAttribute('color', theme.sky);
 
-  // Floor: metallic reflective
-  const floors = gc.querySelectorAll(':scope > a-plane');
-  if (floors[0]) floors[0].setAttribute('material', `color: ${theme.floor}; metalness: 0.8; roughness: 0.4`);
+  // === Platform ===
+  const platformSurface = gc.querySelector('#platform-surface');
+  if (platformSurface) {
+    platformSurface.setAttribute('material', `color: ${theme.floor}; metalness: 0.8; roughness: 0.4`);
+  }
+  const platformSlab = gc.querySelector('#platform-slab');
+  if (platformSlab) {
+    const slabColor = theme.platformSlabColor || '#0a0a22';
+    platformSlab.setAttribute('material', `color: ${slabColor}; metalness: 0.9; roughness: 0.2`);
+  }
 
+  // Platform edge glow
+  const edgeColor = theme.edgeGlowColor || '#0088ff';
+  gc.querySelectorAll('.platform-edge').forEach(el => {
+    el.setAttribute('material', `shader: flat; color: ${edgeColor}; emissive: ${edgeColor}; emissiveIntensity: 1; opacity: 0.5`);
+  });
+
+  // Under-glow rings
+  const underRings = gc.querySelectorAll('.under-glow-ring');
+  if (underRings.length >= 2) {
+    const r1 = theme.underGlowRing1 || '#0088ff';
+    const r2 = theme.underGlowRing2 || '#00d4ff';
+    underRings[0].setAttribute('material', `color: ${r1}; emissive: ${r1}; emissiveIntensity: 1; opacity: 0.2`);
+    underRings[1].setAttribute('material', `color: ${r2}; emissive: ${r2}; emissiveIntensity: 0.8; opacity: 0.15`);
+  }
+
+  // Under-glow light
+  const underLight = gc.querySelector('.under-glow-light');
+  if (underLight) {
+    underLight.setAttribute('color', theme.underGlowColor || '#0088ff');
+  }
+
+  // Grid
   const gridPlane = gc.querySelector('#floor-grid a-plane');
   if (gridPlane) {
     gridPlane.setAttribute('material', `color: ${theme.grid}; wireframe: true; wireframeLinewidth: 1; opacity: ${theme.gridOpacity}`);
   }
 
-  // Walls
-  const wallOpacity = theme.wallOpacity || 0.12;
-  const walls = gc.querySelectorAll(':scope > a-box');
-  walls.forEach(wall => {
-    wall.setAttribute('material', `color: ${theme.wallColor}; opacity: ${wallOpacity}; shader: flat`);
+  // Energy barriers
+  const barriers = gc.querySelectorAll('.arena-barrier');
+  barriers.forEach(barrier => {
+    barrier.setAttribute('material', `shader: flat; color: ${theme.barrierColor}; opacity: 0.04; transparent: true; side: double`);
   });
 
-  // Floor glow rings
+  // Floor glow rings (on platform surface)
   const floorRings = gc.querySelectorAll(':scope > a-torus');
   if (floorRings.length >= 2) {
     if (theme.floorRingColor1) {
@@ -196,12 +415,23 @@ function applyTheme(sceneEl, themeId) {
     }
   }
 
-  // Pillars (inside .arena-pillar entities)
+  // Base glow lines
+  const baseGlow = theme.baseGlowColor || '#0088ff';
+  gc.querySelectorAll('.wall-base-glow').forEach(el => {
+    el.setAttribute('material', `shader: flat; color: ${baseGlow}; emissive: ${baseGlow}; emissiveIntensity: 1; opacity: 0.5`);
+  });
+
+  // Corner glow lines
+  const cornerGlow = theme.cornerGlowColor || '#0088ff';
+  gc.querySelectorAll('.wall-corner-glow').forEach(el => {
+    el.setAttribute('material', `color: ${cornerGlow}; emissive: ${cornerGlow}; emissiveIntensity: 1; opacity: 0.4`);
+  });
+
+  // Pillars
   const pillarEntities = gc.querySelectorAll('.arena-pillar');
   pillarEntities.forEach(pe => {
     const cyl = pe.querySelector('a-cylinder');
     if (cyl) cyl.setAttribute('material', `color: ${theme.pillarColor}; metalness: 0.9; roughness: 0.2`);
-    // Update pillar glow color
     const torus = pe.querySelector('a-torus');
     if (torus && theme.pillarGlowColor) {
       torus.setAttribute('material', `color: ${theme.pillarGlowColor}; emissive: ${theme.pillarGlowColor}; emissiveIntensity: 0.8; opacity: 0.3`);
@@ -221,7 +451,7 @@ function applyTheme(sceneEl, themeId) {
     }
   });
 
-  // === Shadow directional light ===
+  // Shadow directional light
   let shadowLight = gc.querySelector('#shadow-dir-light');
   if (!shadowLight) {
     shadowLight = document.createElement('a-light');
@@ -235,13 +465,13 @@ function applyTheme(sceneEl, themeId) {
   shadowLight.setAttribute('position', sl.position);
   shadowLight.setAttribute('light', `castShadow: true; shadowMapWidth: 1024; shadowMapHeight: 1024; shadowCameraLeft: -20; shadowCameraRight: 20; shadowCameraTop: 20; shadowCameraBottom: -20; shadowCameraNear: 0.5; shadowCameraFar: 50`);
 
-  // === Floor edge gradient (ambient occlusion feel) ===
+  // === Floor edge gradient (ambient occlusion on platform) ===
   gc.querySelectorAll('.floor-edge-gradient').forEach(el => el.remove());
   const edgePositions = [
-    { pos: '0 0.02 -14.5', rot: '-90 0 0', w: 30, h: 2 },
-    { pos: '0 0.02 14.5', rot: '-90 0 0', w: 30, h: 2 },
-    { pos: '-14.5 0.02 0', rot: '-90 90 0', w: 30, h: 2 },
-    { pos: '14.5 0.02 0', rot: '-90 90 0', w: 30, h: 2 },
+    { pos: '0 0.02 -15', rot: '-90 0 0', w: 32, h: 2 },
+    { pos: '0 0.02 15', rot: '-90 0 0', w: 32, h: 2 },
+    { pos: '-15 0.02 0', rot: '-90 90 0', w: 32, h: 2 },
+    { pos: '15 0.02 0', rot: '-90 90 0', w: 32, h: 2 },
   ];
   edgePositions.forEach(e => {
     const grad = document.createElement('a-plane');
@@ -254,25 +484,76 @@ function applyTheme(sceneEl, themeId) {
     gc.appendChild(grad);
   });
 
-  // Remove previous theme decorations
-  gc.querySelectorAll('.theme-decoration').forEach(el => el.remove());
+  // === Sky gradient ===
+  const skyGradientContainer = gc.querySelector('#sky-gradient');
+  if (skyGradientContainer) {
+    while (skyGradientContainer.firstChild) skyGradientContainer.firstChild.remove();
+    const sg = theme.skyGradient;
+    if (sg) {
+      const bottomGlow = document.createElement('a-sphere');
+      bottomGlow.setAttribute('radius', '90');
+      bottomGlow.setAttribute('position', '0 -20 0');
+      bottomGlow.setAttribute('material', `shader: flat; color: ${sg.bottom}; opacity: 0.08; side: back; transparent: true`);
+      skyGradientContainer.appendChild(bottomGlow);
 
-  // Spawn theme-specific decorations
-  if (theme.decorations) {
-    theme.decorations.forEach(dec => {
-      const el = document.createElement(dec.tag);
-      el.classList.add('theme-decoration');
-      if (dec.position) el.setAttribute('position', dec.position);
-      if (dec.rotation) el.setAttribute('rotation', dec.rotation);
-      if (dec.radius) el.setAttribute('radius', dec.radius);
-      if (dec['radius-tubular']) el.setAttribute('radius-tubular', dec['radius-tubular']);
-      if (dec.width) el.setAttribute('width', dec.width);
-      if (dec.height) el.setAttribute('height', dec.height);
-      if (dec.depth) el.setAttribute('depth', dec.depth);
-      if (dec.material) el.setAttribute('material', dec.material);
-      if (dec.animation) el.setAttribute('animation', dec.animation);
-      gc.appendChild(el);
+      const midGlow = document.createElement('a-sphere');
+      midGlow.setAttribute('radius', '85');
+      midGlow.setAttribute('position', '0 -5 0');
+      midGlow.setAttribute('material', `shader: flat; color: ${sg.mid}; opacity: 0.05; side: back; transparent: true`);
+      skyGradientContainer.appendChild(midGlow);
+
+      const topGlow = document.createElement('a-sphere');
+      topGlow.setAttribute('radius', '80');
+      topGlow.setAttribute('position', '0 15 0');
+      topGlow.setAttribute('material', `shader: flat; color: ${sg.top}; opacity: 0.06; side: back; transparent: true`);
+      skyGradientContainer.appendChild(topGlow);
+    }
+  }
+
+  // === Floor fade edges (platform rim blend) ===
+  const floorFadeContainer = gc.querySelector('#floor-fade');
+  if (floorFadeContainer) {
+    while (floorFadeContainer.firstChild) floorFadeContainer.firstChild.remove();
+    const fadeColor = theme.floorFadeColor || theme.sky;
+    const fadePlanes = [
+      { pos: '0 0.015 -15.5', rot: '-90 0 0', w: 32, h: 2 },
+      { pos: '0 0.015 15.5', rot: '-90 0 0', w: 32, h: 2 },
+      { pos: '-15.5 0.015 0', rot: '-90 0 0', w: 2, h: 32 },
+      { pos: '15.5 0.015 0', rot: '-90 0 0', w: 2, h: 32 },
+    ];
+    fadePlanes.forEach(fp => {
+      const plane = document.createElement('a-plane');
+      plane.setAttribute('position', fp.pos);
+      plane.setAttribute('rotation', fp.rot);
+      plane.setAttribute('width', String(fp.w));
+      plane.setAttribute('height', String(fp.h));
+      plane.setAttribute('material', `shader: flat; color: ${fadeColor}; opacity: 0.5; transparent: true`);
+      floorFadeContainer.appendChild(plane);
     });
+  }
+
+  // === Below-void content ===
+  const belowVoidContainer = gc.querySelector('#below-void');
+  if (belowVoidContainer) {
+    while (belowVoidContainer.firstChild) belowVoidContainer.firstChild.remove();
+    if (theme.belowEnv) {
+      _spawnDecorations(belowVoidContainer, theme.belowEnv, 'below-decoration');
+    }
+  }
+
+  // === Distant environment ===
+  const distantEnvContainer = gc.querySelector('#distant-env');
+  if (distantEnvContainer) {
+    while (distantEnvContainer.firstChild) distantEnvContainer.firstChild.remove();
+    if (theme.distantEnv) {
+      _spawnDecorations(distantEnvContainer, theme.distantEnv, 'distant-decoration');
+    }
+  }
+
+  // === Legacy theme decorations ===
+  gc.querySelectorAll('.theme-decoration').forEach(el => el.remove());
+  if (theme.decorations && theme.decorations.length > 0) {
+    _spawnDecorations(gc, theme.decorations, 'theme-decoration');
   }
 }
 

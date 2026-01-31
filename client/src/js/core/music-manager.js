@@ -25,6 +25,12 @@ const MUSIC_PROFILES = {
     tempo: 0.7,
     arpNotes: [523, 659, 784, 880],
   },
+  day: {
+    bassFreq: 50, bassType: 'triangle',
+    padFreq: 196, padFilter: 350,
+    tempo: 0.45,
+    arpNotes: [294, 370, 440, 523],
+  },
 };
 
 class MusicManager {
