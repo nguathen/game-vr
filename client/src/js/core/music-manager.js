@@ -36,6 +36,13 @@ const MUSIC_PROFILES = {
     arpNotes: [294, 370, 440, 523],
     leadNotes: [523, 659, 784, 880],
   },
+  underwater: {
+    bassFreq: 35, bassType: 'sine',
+    padFreq: 130, padFilter: 180,
+    tempo: 0.25,
+    arpNotes: [440, 523, 659, 784],
+    leadNotes: [784, 880, 1047, 1175],
+  },
 };
 
 // Intensity levels: 1=idle, 2=combo5+, 3=combo10+, 4=combo15+/boss
@@ -274,6 +281,37 @@ class MusicManager {
       osc.stop(now + 0.8);
     }, (2 / profile.tempo) * 1000);
     this._intervals.push(leadInterval);
+
+    // === TASK-263: Underwater whale call — occasional low sine sweep ===
+    if (themeId === 'underwater') {
+      const whaleInterval = setInterval(() => {
+        if (!this._playing) return;
+        const now = ctx.currentTime;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(50, now);
+        osc.frequency.exponentialRampToValueAtTime(200, now + 2.5);
+        osc.frequency.exponentialRampToValueAtTime(60, now + 5);
+        gain.gain.setValueAtTime(0.001, now);
+        gain.gain.linearRampToValueAtTime(0.04, now + 1);
+        gain.gain.linearRampToValueAtTime(0.06, now + 3);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 5);
+        osc.connect(gain).connect(masterGain);
+        osc.start(now);
+        osc.stop(now + 5);
+      }, 15000 + Math.random() * 10000);
+      this._intervals.push(whaleInterval);
+
+      // Extra master low-pass for muffled underwater feel
+      const underwaterFilter = ctx.createBiquadFilter();
+      underwaterFilter.type = 'lowpass';
+      underwaterFilter.frequency.value = 800;
+      underwaterFilter.Q.value = 0.5;
+      masterGain.disconnect();
+      masterGain.connect(underwaterFilter).connect(dest);
+      this._nodes.push(underwaterFilter);
+    }
   }
 
   setPlaybackRate(rate) {

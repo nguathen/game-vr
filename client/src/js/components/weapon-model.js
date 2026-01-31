@@ -64,6 +64,10 @@ AFRAME.registerComponent('weapon-model', {
       this._buildShotgun(mat, darkMat, color);
     } else if (weapon.id === 'sniper') {
       this._buildSniper(mat, darkMat, color);
+    } else if (weapon.id === 'smg') {
+      this._buildSmg(mat, darkMat, color);
+    } else if (weapon.id === 'railgun') {
+      this._buildRailgun(mat, darkMat, color);
     } else {
       this._buildPistol(mat, darkMat, color);
     }
@@ -126,6 +130,48 @@ AFRAME.registerComponent('weapon-model', {
     // Muzzle glow
     const m = this._sphere(0, 0, -0.155, 0.006, `shader: flat; color: ${color}; emissive: ${color}; emissiveIntensity: 1; opacity: 0.7; transparent: true`);
     this._container.appendChild(m);
+  },
+
+  _buildSmg(mat, darkMat, color) {
+    // Compact body with foregrip
+    const barrel = this._box(0, 0, -0.04, 0.013, 0.013, 0.07, darkMat);
+    this._container.appendChild(barrel);
+    const body = this._box(0, -0.008, 0.005, 0.022, 0.024, 0.055, mat);
+    this._container.appendChild(body);
+    const mag = this._box(0, -0.032, 0.01, 0.012, 0.025, 0.012, darkMat);
+    this._container.appendChild(mag);
+    const grip = this._box(0, -0.032, 0.025, 0.015, 0.025, 0.016, darkMat);
+    this._container.appendChild(grip);
+    const foregrip = this._box(0, -0.018, -0.025, 0.012, 0.018, 0.015, mat);
+    this._container.appendChild(foregrip);
+    const stock = this._box(0, -0.005, 0.055, 0.01, 0.018, 0.025, darkMat);
+    this._container.appendChild(stock);
+    const muzzle = this._sphere(0, 0, -0.078, 0.008, `shader: flat; color: ${color}; emissive: ${color}; emissiveIntensity: 1; opacity: 0.7; transparent: true`);
+    this._container.appendChild(muzzle);
+  },
+
+  _buildRailgun(mat, darkMat, color) {
+    // Long barrel with coils
+    const barrel = this._box(0, 0, -0.06, 0.012, 0.012, 0.14, darkMat);
+    this._container.appendChild(barrel);
+    // Coil rings along barrel
+    for (let i = 0; i < 3; i++) {
+      const coil = document.createElement('a-torus');
+      coil.setAttribute('position', `0 0 ${-0.02 - i * 0.035}`);
+      coil.setAttribute('rotation', '90 0 0');
+      coil.setAttribute('radius', '0.016');
+      coil.setAttribute('radius-tubular', '0.003');
+      coil.setAttribute('material', mat);
+      coil.setAttribute('shadow', 'cast: true; receive: false');
+      this._container.appendChild(coil);
+    }
+    const body = this._box(0, -0.01, 0.02, 0.024, 0.028, 0.06, mat);
+    this._container.appendChild(body);
+    const grip = this._box(0, -0.038, 0.03, 0.015, 0.03, 0.018, darkMat);
+    this._container.appendChild(grip);
+    // Charge glow at muzzle
+    const glow = this._sphere(0, 0, -0.135, 0.01, `shader: flat; color: ${color}; emissive: ${color}; emissiveIntensity: 2; opacity: 0.8; transparent: true`);
+    this._container.appendChild(glow);
   },
 
   _box(x, y, z, w, h, d, material) {

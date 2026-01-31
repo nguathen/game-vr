@@ -57,6 +57,12 @@ class HapticManager {
   firePistol()    { this.pulse(0.3, 40); }
   fireShotgun()   { this._pattern([1.0, 60], [0.4, 80]); }
   fireSniper()    { this._pattern([0.2, 30], [0.8, 100]); }
+  fireSmg()       { this._pattern([0.25, 25], [0.0, 75], [0.25, 25], [0.0, 75], [0.25, 25]); }
+  fireRailgun(charge) {
+    const intensity = Math.min(0.5 + charge * 0.2, 1.0);
+    this._pattern([intensity, 120], [0.0, 30], [intensity * 0.5, 60]);
+  }
+  railgunCharge(level) { this.pulse(Math.min(0.1 + level * 0.1, 0.5), 50); }
 
   // Target-type hit confirmation
   hitStandard()   { this.pulse(0.4, 40); }

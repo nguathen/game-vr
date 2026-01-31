@@ -237,6 +237,42 @@ class AudioManager {
       osc.connect(gain).connect(this.destination);
       osc.start(now);
       osc.stop(now + 0.25);
+    } else if (type === 'smg') {
+      // Short sharp burst beep
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'square';
+      osc.frequency.setValueAtTime(800 * pv, now);
+      osc.frequency.exponentialRampToValueAtTime(400 * pv, now + 0.03);
+      gain.gain.setValueAtTime(0.15, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.04);
+      osc.connect(gain).connect(this.destination);
+      osc.start(now);
+      osc.stop(now + 0.04);
+    } else if (type === 'railgun') {
+      // Discharge crack — high freq noise burst + low sine thump
+      const bufferSize = ctx.sampleRate * 0.06;
+      const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+      const data = buffer.getChannelData(0);
+      for (let i = 0; i < bufferSize; i++) data[i] = (Math.random() * 2 - 1) * 0.5;
+      const noise = ctx.createBufferSource();
+      noise.buffer = buffer;
+      const ng = ctx.createGain();
+      ng.gain.setValueAtTime(0.35, now);
+      ng.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
+      noise.connect(ng).connect(this.destination);
+      noise.start(now);
+      // Low thump
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(80, now);
+      osc.frequency.exponentialRampToValueAtTime(30, now + 0.2);
+      gain.gain.setValueAtTime(0.3, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+      osc.connect(gain).connect(this.destination);
+      osc.start(now);
+      osc.stop(now + 0.25);
     } else {
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
@@ -249,6 +285,23 @@ class AudioManager {
       osc.start(now);
       osc.stop(now + 0.08);
     }
+  }
+
+  /** TASK-270: Railgun charge whine — rising frequency while charging */
+  playRailgunCharge(level) {
+    if (!this._enabled) return;
+    const ctx = this._getCtx();
+    const now = ctx.currentTime;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'sine';
+    const freq = 200 + level * 400;
+    osc.frequency.setValueAtTime(freq, now);
+    gain.gain.setValueAtTime(0.05 + level * 0.03, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+    osc.connect(gain).connect(this.destination);
+    osc.start(now);
+    osc.stop(now + 0.15);
   }
 
   playLevelUp() {
@@ -843,6 +896,35 @@ class AudioManager {
     osc.connect(gain).connect(this.destination);
     osc.start(now);
     osc.stop(now + 0.2);
+  }
+
+  /** TASK-252: Height zone spawn cue */
+  playHeightZoneCue(zone, pos) {
+    if (!this._enabled) return;
+    const ctx = this._getCtx();
+    const now = ctx.currentTime;
+    const dest = pos ? this._createPanner(pos) : this.destination;
+
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    if (zone === 'floor') {
+      // Low rumble
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(80, now);
+      osc.frequency.exponentialRampToValueAtTime(50, now + 0.3);
+      gain.gain.setValueAtTime(0.12, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+    } else {
+      // High chime
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(1200, now);
+      osc.frequency.exponentialRampToValueAtTime(1800, now + 0.15);
+      gain.gain.setValueAtTime(0.1, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+    }
+    osc.connect(gain).connect(dest);
+    osc.start(now);
+    osc.stop(now + 0.4);
   }
 
   playSelect() {

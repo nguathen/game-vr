@@ -152,6 +152,79 @@ const THEMES = {
     decorations: [],
     ambientParticles: { count: 20, color: '#aaccff', color2: '#6644aa', area: 22, height: 10 },
   },
+  underwater: {
+    id: 'underwater',
+    name: 'Deep Ocean',
+    icon: '🐋',
+    unlockLevel: 10,
+    sky: '#041520',
+    floor: '#1a2a20',
+    grid: '#0a1a15',
+    gridOpacity: 0.06,
+    lights: [
+      { type: 'ambient', color: '#88cccc', intensity: 0.4 },
+      { type: 'point', position: '0 10 0', color: '#00aa88', intensity: 0.8, distance: 50 },
+      { type: 'point', position: '-8 6 -8', color: '#006666', intensity: 0.5, distance: 30 },
+      { type: 'point', position: '8 6 -8', color: '#003366', intensity: 0.5, distance: 30 },
+      { type: 'point', position: '0 4 8', color: '#008888', intensity: 0.35, distance: 25 },
+    ],
+    shadowLight: { color: '#00aa88', intensity: 0.35, position: '5 12 5' },
+    pillarColor: '#0a1a1a',
+    barrierColor: '#004444',
+    floorRingColor1: '#00aa88',
+    floorRingColor2: '#008888',
+    pillarGlowColor: '#00cc99',
+    baseGlowColor: '#006666',
+    cornerGlowColor: '#006666',
+    skyGradient: { bottom: '#0a3040', mid: '#062028', top: '#041520' },
+    floorFadeColor: '#020a0a',
+    platformSlabColor: '#061210',
+    edgeGlowColor: '#00aa88',
+    underGlowColor: '#00aa88',
+    underGlowRing1: '#00aa88',
+    underGlowRing2: '#008888',
+    belowEnv: [
+      // Dark abyss gradient
+      { tag: 'a-sphere', position: '0 -30 0', radius: '15', material: 'shader: flat; color: #000a0a; opacity: 0.06; side: back' },
+      // Bioluminescent dots
+      { tag: 'a-sphere', position: '-8 -12 -6', radius: '0.03', material: 'shader: flat; color: #00ffaa; emissive: #00ffaa; emissiveIntensity: 2; opacity: 0.4', animation: 'property: material.opacity; from: 0.1; to: 0.5; dur: 2000; loop: true; dir: alternate' },
+      { tag: 'a-sphere', position: '10 -18 3', radius: '0.04', material: 'shader: flat; color: #ff44aa; emissive: #ff44aa; emissiveIntensity: 2; opacity: 0.3', animation: 'property: material.opacity; from: 0.05; to: 0.4; dur: 2500; loop: true; dir: alternate' },
+      { tag: 'a-sphere', position: '-4 -22 8', radius: '0.025', material: 'shader: flat; color: #44aaff; emissive: #44aaff; emissiveIntensity: 2; opacity: 0.35', animation: 'property: material.opacity; from: 0.1; to: 0.45; dur: 1800; loop: true; dir: alternate' },
+      { tag: 'a-sphere', position: '6 -15 -10', radius: '0.035', material: 'shader: flat; color: #00ff88; emissive: #00ff88; emissiveIntensity: 2; opacity: 0.25', animation: 'property: material.opacity; from: 0.05; to: 0.35; dur: 3000; loop: true; dir: alternate' },
+      { tag: 'a-sphere', position: '-12 -25 0', radius: '0.05', material: 'shader: flat; color: #aa44ff; emissive: #aa44ff; emissiveIntensity: 2; opacity: 0.2', animation: 'property: material.opacity; from: 0.05; to: 0.3; dur: 2800; loop: true; dir: alternate' },
+    ],
+    distantEnv: [
+      // Coral formations (colored icosahedra clusters)
+      { tag: 'a-icosahedron', position: '-18 0 -35', radius: '2', material: 'color: #cc4466; metalness: 0.3; roughness: 0.8; emissive: #881133; emissiveIntensity: 0.2' },
+      { tag: 'a-icosahedron', position: '-16 1.5 -34', radius: '1.2', material: 'color: #ff8844; metalness: 0.3; roughness: 0.8; emissive: #993311; emissiveIntensity: 0.2' },
+      { tag: 'a-icosahedron', position: '-19 0.5 -33', radius: '0.8', material: 'color: #cc66aa; metalness: 0.3; roughness: 0.8; emissive: #881155; emissiveIntensity: 0.2' },
+      { tag: 'a-icosahedron', position: '20 0 -38', radius: '1.8', material: 'color: #44cc88; metalness: 0.3; roughness: 0.8; emissive: #228844; emissiveIntensity: 0.2' },
+      { tag: 'a-icosahedron', position: '22 1 -36', radius: '1', material: 'color: #ffaa44; metalness: 0.3; roughness: 0.8; emissive: #884400; emissiveIntensity: 0.2' },
+      { tag: 'a-icosahedron', position: '-30 0 -20', radius: '1.5', material: 'color: #ff6688; metalness: 0.3; roughness: 0.8; emissive: #882244; emissiveIntensity: 0.2' },
+      { tag: 'a-icosahedron', position: '30 0 -15', radius: '1.3', material: 'color: #aa88cc; metalness: 0.3; roughness: 0.8; emissive: #664488; emissiveIntensity: 0.2' },
+      { tag: 'a-icosahedron', position: '10 0 35', radius: '1.6', material: 'color: #cc8844; metalness: 0.3; roughness: 0.8; emissive: #884422; emissiveIntensity: 0.2' },
+      // Kelp forest (tall green cylinders with sway)
+      { tag: 'a-cylinder', position: '-25 4 -30', radius: '0.08', height: '8', material: 'color: #226633; metalness: 0.2; roughness: 0.9; emissive: #113322; emissiveIntensity: 0.2; opacity: 0.7', animation: 'property: rotation; from: 0 0 -3; to: 0 0 3; dur: 3000; loop: true; dir: alternate; easing: easeInOutSine' },
+      { tag: 'a-cylinder', position: '-23 3.5 -28', radius: '0.06', height: '7', material: 'color: #338844; metalness: 0.2; roughness: 0.9; emissive: #224433; emissiveIntensity: 0.2; opacity: 0.6', animation: 'property: rotation; from: 0 0 -2; to: 0 0 4; dur: 3500; loop: true; dir: alternate; easing: easeInOutSine' },
+      { tag: 'a-cylinder', position: '25 3 -32', radius: '0.07', height: '6', material: 'color: #226633; metalness: 0.2; roughness: 0.9; emissive: #113322; emissiveIntensity: 0.2; opacity: 0.65', animation: 'property: rotation; from: 0 0 -4; to: 0 0 2; dur: 2800; loop: true; dir: alternate; easing: easeInOutSine' },
+      { tag: 'a-cylinder', position: '28 4.5 -28', radius: '0.05', height: '9', material: 'color: #338844; metalness: 0.2; roughness: 0.9; emissive: #224433; emissiveIntensity: 0.2; opacity: 0.55', animation: 'property: rotation; from: 0 0 -3; to: 0 0 3; dur: 4000; loop: true; dir: alternate; easing: easeInOutSine' },
+      // Sunlight rays (wide transparent cylinders from above)
+      { tag: 'a-cylinder', position: '-5 8 -20', radius: '2', height: '18', material: 'shader: flat; color: #88ccaa; opacity: 0.03; transparent: true', animation: 'property: rotation; from: 0 0 -5; to: 0 0 5; dur: 8000; loop: true; dir: alternate; easing: easeInOutSine' },
+      { tag: 'a-cylinder', position: '8 9 -25', radius: '1.5', height: '20', material: 'shader: flat; color: #88ddbb; opacity: 0.025; transparent: true', animation: 'property: rotation; from: 0 0 3; to: 0 0 -3; dur: 10000; loop: true; dir: alternate; easing: easeInOutSine' },
+      { tag: 'a-cylinder', position: '-12 7 -15', radius: '2.5', height: '16', material: 'shader: flat; color: #aaddcc; opacity: 0.02; transparent: true', animation: 'property: rotation; from: 0 0 -2; to: 0 0 4; dur: 12000; loop: true; dir: alternate; easing: easeInOutSine' },
+      // Whale silhouette (dark elongated body moving slowly across background)
+      { tag: 'a-sphere', position: '40 10 -45', radius: '3', material: 'color: #111822; metalness: 0.2; roughness: 0.9; emissive: #050a11; emissiveIntensity: 0.1; opacity: 0.4', animation: 'property: position; from: 40 10 -45; to: -40 12 -50; dur: 60000; loop: true; easing: linear' },
+      { tag: 'a-cylinder', position: '42 10 -45', radius: '1.5', height: '6', rotation: '0 0 90', material: 'color: #111822; metalness: 0.2; roughness: 0.9; emissive: #050a11; emissiveIntensity: 0.1; opacity: 0.35', animation: 'property: position; from: 42 10 -45; to: -38 12 -50; dur: 60000; loop: true; easing: linear' },
+      // Bubble columns (rising from coral)
+      { tag: 'a-sphere', position: '-18 2 -35', radius: '0.05', material: 'shader: flat; color: #88ddff; opacity: 0.3; transparent: true', animation: 'property: position; from: -18 0 -35; to: -18 8 -35; dur: 6000; loop: true; easing: linear' },
+      { tag: 'a-sphere', position: '20 3 -38', radius: '0.04', material: 'shader: flat; color: #aaeeff; opacity: 0.25; transparent: true', animation: 'property: position; from: 20 0 -38; to: 20 9 -38; dur: 7000; loop: true; easing: linear' },
+      { tag: 'a-sphere', position: '-30 1 -20', radius: '0.06', material: 'shader: flat; color: #88ddff; opacity: 0.2; transparent: true', animation: 'property: position; from: -30 0 -20; to: -30 7 -20; dur: 5500; loop: true; easing: linear' },
+      // Horizon glow ring (aqua tones)
+      { tag: 'a-torus', position: '0 -1 0', rotation: '-90 0 0', radius: '80', 'radius-tubular': '0.15', material: 'shader: flat; color: #004444; emissive: #004444; emissiveIntensity: 1; opacity: 0.08', animation: 'property: material.opacity; from: 0.05; to: 0.1; dur: 5000; loop: true; dir: alternate; easing: easeInOutSine' },
+    ],
+    decorations: [],
+    ambientParticles: { count: 20, color: '#88ddff', color2: '#00aa88', area: 22, height: 10 },
+  },
 };
 
 // Helper: spawn elements from a decoration array into a container

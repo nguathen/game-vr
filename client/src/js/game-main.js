@@ -1,3 +1,4 @@
+import './core/error-handler.js';
 import gameManager, { GameState } from './core/game-manager.js';
 import authManager from './core/auth-manager.js';
 import scoreManager from './game/score-manager.js';
@@ -10,17 +11,22 @@ import { checkProgress } from './game/daily-challenge.js';
 import { checkAchievements } from './game/achievements.js';
 import { applyTheme } from './game/environment-themes.js';
 import { getSkinOverrides } from './game/weapon-skins.js';
-import { getSettings } from './game/settings-util.js';
+import { getSettings, getDifficultyPreset } from './game/settings-util.js';
 import musicManager from './core/music-manager.js';
 import { buildSummary } from './game/game-summary.js';
 import powerUpManager from './game/power-up-manager.js';
 import hapticManager from './core/haptic-manager.js';
+import weatherSystem from './game/weather-system.js';
+import arenaReactions from './game/arena-reactions.js';
+import { getCurrentChallenge, getDaysRemaining } from './game/weekly-challenge.js';
+import { checkNewUnlocks } from './game/unlock-tooltips.js';
 
 const COUNTDOWN_FROM = 3;
 
 let targetSystem;
 let timerInterval;
 let timeLeft;
+let _gameStartTime = 0;
 let _onReturnToMenu;
 let _initialized = false;
 
@@ -238,11 +244,16 @@ function _initRound(themeParam) {
   const container = document.getElementById('target-container');
   const mode = gameModeManager.current;
 
+  const diff = getDifficultyPreset(getSettings());
+  const challenge = getCurrentChallenge();
+  const cMod = challenge.modifiers || {};
+  const lifetimeMul = diff.lifetimeMul * (cMod.lifetimeMul || 1);
   targetSystem = new TargetSystem(container, {
-    spawnInterval: mode.spawnInterval,
-    maxTargets: mode.maxTargets,
-    targetLifetime: mode.targetLifetime,
+    spawnInterval: Math.round(mode.spawnInterval * diff.spawnMul),
+    maxTargets: Math.round(mode.maxTargets * diff.maxTargetsMul),
+    targetLifetime: Math.round(mode.targetLifetime * lifetimeMul),
     bossMode: mode.id === 'bossRush',
+    challengeModifiers: cMod,
   });
 
   audioManager.loadSettings();
@@ -251,6 +262,15 @@ function _initRound(themeParam) {
   applyTheme(_scene, _selectedTheme);
 
   const settings = getSettings();
+
+  // TASK-260: Weather system
+  weatherSystem.init(_scene);
+  const weatherEnabled = settings.weather !== false;
+  weatherSystem.setEnabled(weatherEnabled);
+  weatherSystem.setTheme(_selectedTheme);
+
+  // TASK-262: Arena reactions
+  arenaReactions.init(_scene);
   _applyGameSettings(settings);
   _updateControllerLasers();
 
@@ -263,6 +283,12 @@ function _initRound(themeParam) {
       _hudLevel.setAttribute('value', `Lv.${profile.level}`);
     }
   }
+
+  // Auto-hide level & weapon labels after 3s (reduce clutter)
+  setTimeout(() => {
+    if (_hudLevel) _hudLevel.setAttribute('visible', 'false');
+    if (_hudWeapon) _hudWeapon.setAttribute('visible', 'false');
+  }, 3000);
 
   _updateLivesDisplay();
 
@@ -338,8 +364,6 @@ function _initRound(themeParam) {
         const zoomDur = combo >= 15 ? 300 : combo >= 10 ? 250 : 200;
         document.dispatchEvent(new CustomEvent('camera-impact-zoom', { detail: { duration: zoomDur } }));
         hapticManager.combo(combo);
-        // 3D world-space combo popup
-        document.dispatchEvent(new CustomEvent('combo-milestone', { detail: { combo } }));
       }
 
       // Combo vignette overlay
@@ -383,6 +407,18 @@ function _initRound(themeParam) {
 
   // Player damage from projectiles, chargers, danger zones (TASK-250/251/253)
   targetSystem.onPlayerDamage = (source) => {
+    // TASK-271: Shield absorbs hit
+    if (powerUpManager.consumeShield()) {
+      audioManager.playShieldBlock({ x: 0, y: 1.5, z: 0 });
+      hapticManager.pulse(0.6, 80);
+      if (_scene) {
+        const el = document.createElement('a-entity');
+        el.setAttribute('position', '0 1.5 -0.5');
+        el.setAttribute('damage-number', 'text: SHIELDED!; color: #4488ff');
+        _scene.appendChild(el);
+      }
+      return;
+    }
     const currentMode = gameModeManager.current;
     if (currentMode.lives !== Infinity) {
       const dead = gameModeManager.loseLife();
@@ -554,6 +590,15 @@ function _applyGameSettings(settings) {
     _hudCombo.setAttribute('visible', 'false');
   }
 
+  // Minimal HUD: hide everything except score + timer + crosshair
+  if (settings.minimalHud) {
+    if (_hudCombo) _hudCombo.setAttribute('visible', 'false');
+    if (_hudLives) _hudLives.setAttribute('visible', 'false');
+    if (_hudWeapon) _hudWeapon.setAttribute('visible', 'false');
+    if (_hudLevel) _hudLevel.setAttribute('visible', 'false');
+    if (_hudPowerup) _hudPowerup.setAttribute('visible', 'false');
+  }
+
   // Bloom toggle
   const sceneEl = document.querySelector('a-scene');
   if (sceneEl && sceneEl.hasAttribute('bloom-effect')) {
@@ -617,6 +662,7 @@ function startRound() {
   powerUpManager.reset();
   const currentMode = gameModeManager.current;
   timeLeft = currentMode.duration;
+  _gameStartTime = Date.now();
   gameModeManager.startRound();
   gameManager.changeState(GameState.PLAYING);
   if (_btnQuitVr) _btnQuitVr.setAttribute('visible', 'true');
@@ -626,7 +672,11 @@ function startRound() {
   musicManager.startMusic(_selectedTheme);
 
   _hudScore.setAttribute('value', 'Score: 0');
-  _hudCombo.setAttribute('value', '');
+  // Show weekly challenge banner briefly
+  const wc = getCurrentChallenge();
+  _hudCombo.setAttribute('value', `${wc.icon} ${wc.name}`);
+  _hudCombo.setAttribute('color', '#ffd700');
+  setTimeout(() => { if (_hudCombo) _hudCombo.setAttribute('value', ''); }, 3000);
 
   // Reset timer state
   _hudTimer.removeAttribute('animation__pulse');
@@ -683,6 +733,9 @@ async function endGame() {
   targetSystem.stop();
   powerUpManager.reset();
   musicManager.stopMusic();
+  weatherSystem.stop();
+  document.dispatchEvent(new CustomEvent('game-over-reactions'));
+  arenaReactions.stop();
   audioManager.playGameOver();
 
   const result = scoreManager.finalize();
@@ -703,12 +756,26 @@ async function endGame() {
   const wu = { ...(profile.weaponUsage || {}) };
   wu[weaponId] = (wu[weaponId] || 0) + 1;
   const ms = { ...(profile.modeStats || {}) };
-  if (!ms[currentMode.id]) ms[currentMode.id] = { games: 0 };
+  if (!ms[currentMode.id]) ms[currentMode.id] = { games: 0, shots: 0, hits: 0 };
   ms[currentMode.id].games++;
+  ms[currentMode.id].shots = (ms[currentMode.id].shots || 0) + (summary.shotsFired || 0);
+  ms[currentMode.id].hits = (ms[currentMode.id].hits || 0) + (summary.targetsHit || 0);
   const recent = [...(profile.recentGames || [])];
   recent.push({ mode: currentMode.id, weapon: weaponId, score: result.score, targets: targetSystem.targetsHit, date: Date.now() });
   if (recent.length > 10) recent.shift();
-  await authManager.saveProfile({ weaponUsage: wu, modeStats: ms, recentGames: recent });
+  // Enhanced stats tracking
+  const totalShotsFired = (profile.totalShotsFired || 0) + (summary.shotsFired || 0);
+  const gameDuration = Math.round((Date.now() - _gameStartTime) / 1000);
+  const totalPlayTime = (profile.totalPlayTime || 0) + gameDuration;
+  const bestAccuracy = Math.max(profile.bestAccuracy || 0, summary.accuracy || 0);
+  // Per-weapon detailed stats
+  const pws = { ...(profile.perWeaponStats || {}) };
+  if (!pws[weaponId]) pws[weaponId] = { kills: 0, shots: 0, games: 0, bestScore: 0 };
+  pws[weaponId].kills += summary.targetsHit || 0;
+  pws[weaponId].shots += summary.shotsFired || 0;
+  pws[weaponId].games++;
+  pws[weaponId].bestScore = Math.max(pws[weaponId].bestScore, result.score);
+  await authManager.saveProfile({ weaponUsage: wu, modeStats: ms, recentGames: recent, totalShotsFired, totalPlayTime, bestAccuracy, perWeaponStats: pws });
 
   if (isNewHigh) {
     leaderboardManager.submitScore(currentMode.id, result.score).catch(() => {});
@@ -726,6 +793,7 @@ async function endGame() {
 
   if (levelResult.leveledUp) {
     audioManager.playLevelUp();
+    checkNewUnlocks(levelResult.oldLevel, levelResult.newLevel);
   }
 
   // VR: show 3D game over HUD and auto-return to menu

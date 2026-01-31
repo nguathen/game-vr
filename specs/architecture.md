@@ -390,6 +390,81 @@ Score + Retry         Item → Save
 - Negative: Need to run `npm install` in both directories (mitigated by `npm run install:all`)
 - Note: A-Frame components in `client/src/js/components/` must be synced to `client/public/js/components/` before build (handled by `quest-deploy.ps1`)
 
+### ADR-008: V13 Environment Upgrade — Weather, Destruction, Reactions, Underwater Theme
+**Status:** Accepted
+**Date:** 2026-01-31
+
+**Context:** Game đã có gameplay mechanics phong phú (V11-V12) nhưng không gian ảo còn tĩnh. Cần môi trường phản ứng với gameplay và thêm variety cho themes.
+
+**Decision:** 4 upgrades:
+1. Weather System (rain/dust per theme, object-pooled particles)
+2. Destructible Environment (impact marks on miss shots)
+3. Arena Reactions (lights/shake respond to gameplay events)
+4. Underwater Theme (3rd complete environment, unlock level 10)
+
+**Consequences:**
+- Positive: Immersion tăng đáng kể, arena "sống" thay vì tĩnh
+- Positive: Tận dụng particle/audio system đã có
+- Positive: Thêm progression goal (level 10 unlock)
+- Negative: Thêm ~100 particles (weather) — cần object pool
+- Risk: Motion sickness nếu screen shake quá mạnh → keep subtle
+- Mitigation: All effects có toggle/intensity control
+
+### ADR-009: V14 Content & Quality-of-Life Upgrade
+**Status:** Accepted
+**Date:** 2026-01-31
+
+**Context:** Game có 68 completed tasks, gameplay rất phong phú. Tuy nhiên content variety còn hạn chế (3 weapons, 3 power-ups, 15 achievements) và thiếu accessibility/QoL features.
+
+**Decision:** 8 upgrades chia 2 nhóm:
+
+**Content Expansion:**
+1. New Weapons — SMG (burst-fire 3-round) + Railgun (charge-shot, high damage)
+2. New Power-ups — Shield (absorb 1 hit), Magnet (auto-attract nearby targets), Slow-Mo (slow target movement)
+3. More Achievements — 10 new (accuracy, weapon mastery, mode-specific, streak-based)
+4. Progressive Difficulty — Survival mode scales spawn rate/speed over time
+
+**Quality-of-Life:**
+5. Colorblind Mode — 3 presets (protanopia, deuteranopia, tritanopia) with target shape+pattern differentiation
+6. Detailed Stats — Track accuracy trends, playtime, longest streaks, per-weapon stats
+7. Difficulty Presets — Easy/Normal/Hard modifiers on existing modes
+8. Seasonal Events — Weekly rotating challenge with bonus XP/coins
+
+**Consequences:**
+- Positive: Double weapon variety (3→5), power-up variety (3→6)
+- Positive: Accessibility compliance (colorblind support)
+- Positive: Deeper progression (25 achievements, difficulty tiers)
+- Positive: Retention (seasonal events, stats tracking)
+- Negative: More balance tuning needed for new weapons
+- Risk: SMG burst might feel too powerful → cap damage per burst
+- Mitigation: All new content follows existing unlock-level gating
+
+### ADR-010: V15 Production Hardening & UX Polish
+
+**Status:** Accepted
+**Date:** 2026-01-31
+
+**Context:**
+Game has excellent single-player content (5 weapons, 6 power-ups, 4 modes, 3 themes, 25 achievements, weekly challenges). However, production infrastructure and onboarding UX are lacking — no offline support, no error handling, no loading tips, no weapon-specific tutorials, no first-unlock tooltips, no per-weapon detailed stats.
+
+**Decision:**
+V15 splits into Tier 1 (Production-Ready) and Tier 2 (UX Polish):
+
+**Tier 1 — Production-Ready:**
+1. **Service Worker + Offline Cache** — Cache A-Frame, game assets, enable offline play with localStorage profile. Register SW in all HTML pages.
+2. **Global Error Handling** — window.onerror + unhandledrejection → user-friendly error overlay with retry. WebXR session loss recovery.
+3. **Loading Screen Tips** — Randomized gameplay tips during page load + scene initialization. Progress indicator.
+
+**Tier 2 — UX Polish:**
+4. **Weapon Tutorial Expansion** — Add weapon-specific tutorial steps: shotgun spread, sniper precision, SMG burst timing, railgun charge. Triggered on first weapon unlock.
+5. **First-Unlock Tooltips** — VR popup when unlocking weapon/mode/skin for first time. Shows name + description + "Try it!" prompt.
+6. **Per-Weapon Detailed Stats** — Track per-weapon: kills, accuracy, best score. Display in stats dashboard with weapon breakdown section.
+
+**Consequences:**
+- Positive: Playable offline on Quest, crash-resilient, better new-player experience
+- Negative: Service worker adds complexity to deployment (cache invalidation)
+- Risks: SW cache staleness — mitigated with version-based cache busting
+
 ### ADR Template
 
 ```markdown

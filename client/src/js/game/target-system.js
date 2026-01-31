@@ -2,7 +2,7 @@ import scoreManager from './score-manager.js';
 import audioManager from '../core/audio-manager.js';
 import authManager from '../core/auth-manager.js';
 import powerUpManager from './power-up-manager.js';
-import { getSettings } from './settings-util.js';
+import { getSettings, remapColor } from './settings-util.js';
 
 const BASE_POINTS = 10;
 // 360-degree spawn: distance bands (close/mid/far), full height range, hemisphere bias
@@ -51,6 +51,7 @@ class TargetSystem {
     this._maxTargets = config.maxTargets || 8;
     this._targetLifetime = config.targetLifetime || 5000;
     this._bossMode = config.bossMode || false;
+    this._challengeMods = config.challengeModifiers || {};
     this._wave = 0;
     this._coinsEarned = 0;
     this._slowMoActive = false;
@@ -246,18 +247,41 @@ class TargetSystem {
   }
 
   _trySpawn() {
-    if (!this._running || this._bossSpawnPaused || this._targets.size >= this._maxTargets) return;
+    if (!this._running || this._bossSpawnPaused) return;
+
+    // Progressive difficulty: scale with wave count
+    const waveScale = Math.min(this._wave / 50, 1); // 0→1 over 50 waves
+    const effectiveMax = this._maxTargets + Math.floor(waveScale * 4); // up to +4 targets
+    if (this._targets.size >= effectiveMax) return;
+
     this._spawnTarget();
+  }
+
+  /** Get current effective target lifetime, scaled by wave progress */
+  _getEffectiveLifetime() {
+    const waveScale = Math.min(this._wave / 50, 1);
+    // Lifetime shrinks by up to 40% at max difficulty
+    return Math.round(this._targetLifetime * (1 - waveScale * 0.4));
   }
 
   _pickTargetType() {
     if (this._bossMode) return 'heavy';
 
+    // Weekly challenge: force a specific target type
+    if (this._challengeMods.forceTargetType) return this._challengeMods.forceTargetType;
+
+    // Build weighted list with challenge modifiers
     let total = 0;
-    for (const t of Object.values(TARGET_TYPES)) total += t.weight;
+    const entries = Object.entries(TARGET_TYPES).map(([id, t]) => {
+      let w = t.weight;
+      if (id === 'powerup' && this._challengeMods.powerupWeightMul) w *= this._challengeMods.powerupWeightMul;
+      if (id === 'bonus' && this._challengeMods.bonusWeightMul) w *= this._challengeMods.bonusWeightMul;
+      total += w;
+      return [id, w];
+    });
     let r = Math.random() * total;
-    for (const [id, t] of Object.entries(TARGET_TYPES)) {
-      r -= t.weight;
+    for (const [id, w] of entries) {
+      r -= w;
       if (r <= 0) return id;
     }
     return 'standard';
@@ -265,7 +289,14 @@ class TargetSystem {
 
   _spawnTarget() {
     const typeId = this._pickTargetType();
-    const type = TARGET_TYPES[typeId];
+    let type = TARGET_TYPES[typeId];
+
+    // Weekly challenge: radius and points modifiers
+    if (this._challengeMods.radiusMul || this._challengeMods.pointsMul) {
+      type = { ...type };
+      if (this._challengeMods.radiusMul) type.radius *= this._challengeMods.radiusMul;
+      if (this._challengeMods.pointsMul) type.points *= this._challengeMods.pointsMul;
+    }
 
     // TASK-256: 15% chance to spawn melee target (standard type only, not boss mode)
     if (!this._bossMode && typeId === 'standard' && Math.random() < 0.15) {
@@ -371,10 +402,13 @@ class TargetSystem {
       });
     }
 
-    const color = type.color || this._randomColor();
+    const settings = getSettings();
+    const rawColor = type.color || this._randomColor();
+    const color = remapColor(rawColor, settings);
     // 3D materials: metallic + emissive for sci-fi look
     const matProps = TARGET_MATERIALS[typeId] || TARGET_MATERIALS.standard;
-    el.setAttribute('material', `color: ${color}; metalness: ${matProps.metalness}; roughness: ${matProps.roughness}; emissive: ${matProps.emissive}; emissiveIntensity: ${matProps.emissiveIntensity}`);
+    const emissive = remapColor(matProps.emissive, settings);
+    el.setAttribute('material', `color: ${color}; metalness: ${matProps.metalness}; roughness: ${matProps.roughness}; emissive: ${emissive}; emissiveIntensity: ${matProps.emissiveIntensity}`);
     el.setAttribute('shadow', 'cast: true; receive: false');
 
     // Wireframe overlay for visual depth
@@ -472,21 +506,21 @@ class TargetSystem {
       dur: 300, easing: 'easeOutElastic',
     });
 
-    const settings = getSettings();
+    const slowMul = powerUpManager.hasSlowField() ? 2.0 : 1.0; // double duration = half speed
     if (!settings.reducedMotion) {
       if (type.speed > 0) {
         const range = type.speed;
         el.setAttribute('animation__move', {
           property: 'position',
           to: `${x + range} ${y} ${z}`,
-          dur: 800 + Math.random() * 400,
+          dur: (800 + Math.random() * 400) * slowMul,
           easing: 'easeInOutSine', loop: true, dir: 'alternate',
         });
       } else {
         el.setAttribute('animation__float', {
           property: 'position',
           to: `${x} ${y + 0.3} ${z}`,
-          dur: 1200 + Math.random() * 600,
+          dur: (1200 + Math.random() * 600) * slowMul,
           easing: 'easeInOutSine', loop: true, dir: 'alternate',
         });
       }
@@ -514,7 +548,7 @@ class TargetSystem {
       this._onTargetHit(el, damage, hitPos);
     });
 
-    const lifetime = type.lifetime || this._targetLifetime;
+    const lifetime = type.lifetime || this._getEffectiveLifetime();
     const expireTimeout = setTimeout(() => {
       if (this._targets.has(el)) {
         this._removeTarget(el, true);
@@ -550,6 +584,47 @@ class TargetSystem {
       });
       el.appendChild(timingRing);
       el._timingRing = timingRing;
+    }
+
+    // TASK-252: Height-zone visual indicators
+    const heightZone = spawnPos._heightZone || 'normal';
+    el._heightZone = heightZone;
+    if (heightZone === 'floor') {
+      // Ground-glow ring beneath floor target
+      const ring = document.createElement('a-ring');
+      ring.setAttribute('position', `${x} 0.05 ${z}`);
+      ring.setAttribute('rotation', '-90 0 0');
+      ring.setAttribute('radius-inner', '0.4');
+      ring.setAttribute('radius-outer', '0.6');
+      ring.setAttribute('material', 'shader: flat; color: #ff6600; emissive: #ff4400; emissiveIntensity: 1; opacity: 0.4; transparent: true');
+      ring.setAttribute('animation__pulse', {
+        property: 'material.opacity', from: 0.2, to: 0.5,
+        dur: 600, loop: true, dir: 'alternate', easing: 'easeInOutSine',
+      });
+      const scene = this._container.sceneEl || this._container.closest('a-scene');
+      if (scene) {
+        scene.appendChild(ring);
+        el._heightIndicator = ring;
+      }
+      audioManager.playHeightZoneCue('floor', { x, y, z });
+    } else if (heightZone === 'overhead') {
+      // Spotlight beam from target down to floor
+      const beam = document.createElement('a-cylinder');
+      const beamH = y - 0.05;
+      beam.setAttribute('position', `${x} ${y / 2} ${z}`);
+      beam.setAttribute('radius', '0.03');
+      beam.setAttribute('height', String(beamH));
+      beam.setAttribute('material', 'shader: flat; color: #44aaff; emissive: #2288ff; emissiveIntensity: 1; opacity: 0.08; transparent: true');
+      beam.setAttribute('animation__pulse', {
+        property: 'material.opacity', from: 0.04, to: 0.12,
+        dur: 800, loop: true, dir: 'alternate', easing: 'easeInOutSine',
+      });
+      const scene = this._container.sceneEl || this._container.closest('a-scene');
+      if (scene) {
+        scene.appendChild(beam);
+        el._heightIndicator = beam;
+      }
+      audioManager.playHeightZoneCue('overhead', { x, y, z });
     }
 
     // Spatial audio hum (max 8 concurrent)
@@ -590,7 +665,8 @@ class TargetSystem {
         this._onComboChange?.(0);
       }, 2000);
 
-      const comboMultiplier = Math.min(this._combo, 5);
+      const comboCap = this._challengeMods.comboCapOverride || 5;
+      const comboMultiplier = Math.min(this._combo, comboCap);
       const powerUpMultiplier = powerUpManager.getMultiplier();
 
       // TASK-257: Rhythm timing bonus
@@ -683,6 +759,28 @@ class TargetSystem {
     // Stop spatial hum
     const hum = this._targetHums.get(el);
     if (hum) { hum.stop(); this._targetHums.delete(el); }
+    // TASK-252: cleanup height indicator
+    if (el._heightIndicator?.parentNode) el._heightIndicator.parentNode.removeChild(el._heightIndicator);
+
+    // TASK-252: Height-zone streak tracking
+    if (!isDecoy && (el._heightZone === 'floor' || el._heightZone === 'overhead')) {
+      this._heightStreak = this._heightStreak || { zone: null, count: 0 };
+      if (this._heightStreak.zone === el._heightZone) {
+        this._heightStreak.count++;
+      } else {
+        this._heightStreak = { zone: el._heightZone, count: 1 };
+      }
+      if (this._heightStreak.count >= 3) {
+        const label = el._heightZone === 'floor' ? 'FLOOR SWEEP!' : 'SKY SHOT!';
+        const bonus = 15;
+        scoreManager.add(bonus);
+        this._spawnDamageNumber(pos, bonus, el._heightZone === 'floor' ? '#ff6600' : '#44aaff', ` ${label}`);
+        document.dispatchEvent(new CustomEvent('combo-milestone', { detail: { combo: this._combo, label } }));
+        this._heightStreak.count = 0;
+      }
+    } else {
+      this._heightStreak = { zone: null, count: 0 };
+    }
   }
 
   _updateHums() {
@@ -698,6 +796,24 @@ class TargetSystem {
       const vol = 0.02 + progress * 0.06;
       hum.update({ x: pos.x, y: pos.y, z: pos.z }, vol);
     });
+
+    // Magnet power-up: auto-hit targets within 3m of player
+    if (powerUpManager.hasMagnet()) {
+      const cam = document.getElementById('camera');
+      if (cam) {
+        const camPos = new THREE.Vector3();
+        cam.object3D.getWorldPosition(camPos);
+        for (const el of this._targets) {
+          if (!el.object3D || el._targetType === 'decoy') continue;
+          const tPos = el.object3D.position;
+          const dist = camPos.distanceTo(tPos);
+          if (dist < 3) {
+            el.dispatchEvent(new CustomEvent('destroyed', { detail: { damage: 1, position: { x: tPos.x, y: tPos.y, z: tPos.z } } }));
+            this._removeTarget(el);
+          }
+        }
+      }
+    }
 
     // Check if heavy/boss targets should fire projectiles (TASK-250)
     this._checkProjectileFiring();
@@ -767,6 +883,8 @@ class TargetSystem {
     if (el._expireTimeout) clearTimeout(el._expireTimeout);
     const hum = this._targetHums.get(el);
     if (hum) { hum.stop(); this._targetHums.delete(el); }
+    // TASK-252: cleanup height indicator
+    if (el._heightIndicator?.parentNode) el._heightIndicator.parentNode.removeChild(el._heightIndicator);
 
     if (expired) {
       this._combo = 0;
@@ -800,31 +918,41 @@ class TargetSystem {
     let angle;
     const r = Math.random();
     if (r < SPAWN.frontBias) {
-      // Front hemisphere: -70° to +70° (facing -Z)
       angle = (Math.random() - 0.5) * (140 * Math.PI / 180);
     } else if (r < SPAWN.frontBias + SPAWN.sideBias) {
-      // Sides: 70°–110° left or right
       const side = Math.random() < 0.5 ? 1 : -1;
       angle = side * (70 + Math.random() * 40) * Math.PI / 180;
     } else {
-      // Behind: 110°–180° left or right
       const side = Math.random() < 0.5 ? 1 : -1;
       angle = side * (110 + Math.random() * 70) * Math.PI / 180;
     }
 
     // Distance: weighted toward mid-range
     const dist = SPAWN.distMin + Math.random() * (SPAWN.distMax - SPAWN.distMin);
-    const y = this._rand(SPAWN.yMin, SPAWN.yMax);
 
-    // Convert to XZ (angle 0 = -Z direction = forward)
+    // TASK-252: Height-zone spawn distribution
+    // 20% floor (crouch), 15% overhead (reach up), 65% normal
+    let y;
+    let heightZone = 'normal';
+    const hr = Math.random();
+    if (hr < 0.20) {
+      y = this._rand(0.3, 0.6);
+      heightZone = 'floor';
+    } else if (hr < 0.35) {
+      y = this._rand(3.5, 5.0);
+      heightZone = 'overhead';
+    } else {
+      y = this._rand(SPAWN.yMin, SPAWN.yMax);
+    }
+
     const x = Math.sin(angle) * dist;
     const z = -Math.cos(angle) * dist;
 
-    // Clamp to arena bounds (platform is 32x32, barriers at ±15)
     return {
       x: THREE.MathUtils.clamp(x, -13, 13),
       y,
       z: THREE.MathUtils.clamp(z, -13, 13),
+      _heightZone: heightZone,
     };
   }
 

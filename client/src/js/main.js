@@ -5,6 +5,7 @@ import { startGame as startGameSession } from './game-main.js';
 import { getThemes } from './game/environment-themes.js';
 import iapManager from './iap/iap-manager.js';
 import { showToast } from './ui/toast.js';
+import { showWeaponTutorial } from './game/weapon-tutorial.js';
 
 let selectedMode = 'timeAttack';
 let selectedWeapon = 'pistol';
@@ -140,6 +141,8 @@ function buildWeaponButtons(profile) {
         selectedWeapon = weapon.id;
         buildWeaponButtons(profile);
         refreshRaycasters();
+        // Show weapon tutorial on first selection (pistol excluded — it's the starter)
+        if (weapon.id !== 'pistol') showWeaponTutorial(weapon.id);
       });
     }
   });

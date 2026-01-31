@@ -107,14 +107,16 @@ AFRAME.registerComponent('shoot-controls', {
       const wId = weapon?.id;
       if (wId === 'shotgun') hm.fireShotgun();
       else if (wId === 'sniper') hm.fireSniper();
+      else if (wId === 'smg') hm.fireSmg();
+      else if (wId === 'railgun') hm.fireRailgun(weapon?.damage || 1);
       else hm.firePistol();
     }
 
     // Weapon recoil kick (snap back quickly)
     this._applyRecoil(weapon);
 
-    // Shell casing eject (pistol & shotgun only)
-    if (!weapon || weapon.id !== 'sniper') {
+    // Shell casing eject (pistol, shotgun, smg — not sniper/railgun)
+    if (!weapon || (weapon.id !== 'sniper' && weapon.id !== 'railgun')) {
       this._spawnShellCasing(weapon);
     }
   },
@@ -125,8 +127,9 @@ AFRAME.registerComponent('shoot-controls', {
     if (!obj || this._recoiling) return;
     this._recoiling = true;
 
-    const kick = weapon?.id === 'shotgun' ? 0.06 : weapon?.id === 'sniper' ? 0.04 : 0.025;
-    const rotKick = weapon?.id === 'shotgun' ? 3 : weapon?.id === 'sniper' ? 2 : 1.5;
+    const wId = weapon?.id;
+    const kick = wId === 'shotgun' ? 0.06 : wId === 'sniper' ? 0.04 : wId === 'railgun' ? 0.08 : wId === 'smg' ? 0.015 : 0.025;
+    const rotKick = wId === 'shotgun' ? 3 : wId === 'sniper' ? 2 : wId === 'railgun' ? 4 : wId === 'smg' ? 0.8 : 1.5;
 
     // Store original
     const origZ = obj.position.z;
@@ -241,7 +244,8 @@ AFRAME.registerComponent('shoot-controls', {
     const mid = origin.clone().add(end).multiplyScalar(0.5);
 
     const color = weapon?.laserColor || '#ff4444';
-    const trailRadius = weapon?.id === 'shotgun' ? 0.018 : weapon?.id === 'sniper' ? 0.005 : 0.01;
+    const wId = weapon?.id;
+    const trailRadius = wId === 'shotgun' ? 0.018 : wId === 'sniper' ? 0.005 : wId === 'railgun' ? 0.025 : wId === 'smg' ? 0.007 : 0.01;
     const trail = document.createElement('a-cylinder');
     trail.setAttribute('position', `${mid.x} ${mid.y} ${mid.z}`);
     trail.setAttribute('radius', String(trailRadius));
@@ -350,5 +354,73 @@ AFRAME.registerComponent('shoot-controls', {
     // Light haptic on miss
     const hm = window.__hapticManager;
     if (hm) hm.pulse(0.1, 20);
+
+    // TASK-261: Destructible environment — burn mark + energy cracks
+    this._spawnImpactMark(point);
+  },
+
+  // TASK-261: Impact marks pool (max 20, FIFO)
+  _impactMarks: [],
+
+  _spawnImpactMark(point) {
+    const scene = this.el.sceneEl;
+    if (!scene || !point) return;
+    const px = point.x, py = point.y, pz = point.z;
+
+    // Skip if not near floor/barriers (only on arena surfaces)
+    if (py > 8 || py < -0.5) return;
+
+    // FIFO cleanup
+    while (this._impactMarks.length >= 20) {
+      const old = this._impactMarks.shift();
+      if (old?.parentNode) old.parentNode.removeChild(old);
+    }
+
+    const container = document.createElement('a-entity');
+    container.setAttribute('position', `${px} ${py} ${pz}`);
+
+    // Burn mark circle
+    const burn = document.createElement('a-circle');
+    const burnR = 0.1 + Math.random() * 0.1;
+    burn.setAttribute('radius', String(burnR));
+    // Orient toward camera roughly
+    if (Math.abs(py) < 0.2) {
+      burn.setAttribute('rotation', '-90 0 0');
+      burn.setAttribute('position', `0 0.02 0`);
+    }
+    burn.setAttribute('material', `shader: flat; color: #ff8800; emissive: #ff6600; emissiveIntensity: 1; opacity: 0.7; transparent: true`);
+    burn.setAttribute('animation__fade', {
+      property: 'material.opacity', from: 0.7, to: 0,
+      dur: 5000, easing: 'easeInQuad',
+    });
+    container.appendChild(burn);
+
+    // Energy crack lines (2-3 thin cylinders)
+    const crackCount = 2 + Math.floor(Math.random() * 2);
+    for (let i = 0; i < crackCount; i++) {
+      const crack = document.createElement('a-cylinder');
+      const len = 0.15 + Math.random() * 0.2;
+      const angle = Math.random() * 360;
+      crack.setAttribute('radius', '0.004');
+      crack.setAttribute('height', String(len));
+      crack.setAttribute('position', `${Math.cos(angle) * len * 0.4} 0.01 ${Math.sin(angle) * len * 0.4}`);
+      crack.setAttribute('rotation', `0 ${angle} 90`);
+      crack.setAttribute('material', `shader: flat; color: #00d4ff; emissive: #00d4ff; emissiveIntensity: 2; opacity: 0.6; transparent: true`);
+      crack.setAttribute('animation__fade', {
+        property: 'material.opacity', from: 0.6, to: 0,
+        dur: 3000, easing: 'easeInQuad',
+      });
+      container.appendChild(crack);
+    }
+
+    scene.appendChild(container);
+    this._impactMarks.push(container);
+
+    // Auto-remove after 5s
+    setTimeout(() => {
+      const idx = this._impactMarks.indexOf(container);
+      if (idx >= 0) this._impactMarks.splice(idx, 1);
+      if (container.parentNode) container.parentNode.removeChild(container);
+    }, 5100);
   },
 });

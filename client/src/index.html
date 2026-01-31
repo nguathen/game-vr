@@ -8,6 +8,54 @@
   <link rel="stylesheet" href="./css/style.css">
 </head>
 <body>
+  <div id="loading-screen" style="position:fixed;inset:0;z-index:99990;background:#0a0a1a;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#fff;font-family:monospace;transition:opacity 0.4s">
+    <div style="font-size:28px;margin-bottom:16px;color:#00ff88">VR Quest</div>
+    <div style="width:120px;height:3px;background:#222;border-radius:2px;overflow:hidden;margin-bottom:16px">
+      <div id="loading-bar" style="width:0%;height:100%;background:#00ff88;transition:width 0.3s"></div>
+    </div>
+    <div id="loading-tip" style="font-size:13px;opacity:0.6;max-width:300px;text-align:center"></div>
+  </div>
+  <script>
+  (function(){
+    var tips=[
+      "Aim for combos — x5 multiplier at 5 hits!",
+      "Power-up targets glow green — shoot them for buffs",
+      "Shotgun is great for grouped targets",
+      "Sniper gives 2x damage — aim carefully",
+      "SMG fires 3-round bursts — tap fast!",
+      "Hold trigger to charge Railgun for massive damage",
+      "Shield power-up blocks one hit",
+      "Magnet auto-pulls nearby targets to you",
+      "Slow Field halves all target movement",
+      "Dodge red projectiles — they hurt!",
+      "Punch glowing melee targets with your fists",
+      "Hit rhythm targets on the beat for bonus points",
+      "Lean left/right to dodge laser sweeps",
+      "Boss Rush gets harder every 5 waves",
+      "Weekly challenges give bonus XP — check the banner!",
+      "Try Hard difficulty for 2x the challenge"
+    ];
+    var el=document.getElementById('loading-tip');
+    if(el)el.textContent=tips[Math.floor(Math.random()*tips.length)];
+    var bar=document.getElementById('loading-bar');
+    var p=10;
+    var iv=setInterval(function(){p=Math.min(p+Math.random()*15,90);if(bar)bar.style.width=p+'%';},300);
+    function dismiss(){
+      clearInterval(iv);
+      if(bar)bar.style.width='100%';
+      var ls=document.getElementById('loading-screen');
+      if(ls){setTimeout(function(){ls.style.opacity='0';setTimeout(function(){ls.remove();},400);},200);}
+    }
+    var sc=document.querySelector('a-scene');
+    if(sc){
+      if(sc.hasLoaded)dismiss();
+      else sc.addEventListener('loaded',dismiss);
+    }else{
+      window.addEventListener('load',dismiss);
+    }
+    setTimeout(dismiss,8000);
+  })();
+  </script>
   <div id="transition" class="transition"></div>
 
   <!-- Register A-Frame components before scene -->
@@ -426,5 +474,6 @@
   </a-scene>
 
   <script type="module" src="./js/main.js"></script>
+<script>if('serviceWorker' in navigator)navigator.serviceWorker.register('./sw.js').catch(()=>{});</script>
 </body>
 </html>
