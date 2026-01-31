@@ -68,6 +68,7 @@ AFRAME.registerComponent('shoot-controls', {
     if (weapon && weapon.projectiles > 1 && weapon.spread > 0) {
       this._shotgunHit(raycaster, weapon);
     } else {
+      let hitTarget = false;
       if (intersections.length > 0) {
         const hit = intersections[0];
         let targetEl = hit.object.el;
@@ -79,9 +80,22 @@ AFRAME.registerComponent('shoot-controls', {
           targetEl.dispatchEvent(new CustomEvent('hit', {
             detail: { point: hit.point, damage },
           }));
-          this._flashLaser(weapon);
+          hitTarget = true;
+        } else {
+          // Hit environment — spawn ricochet at impact point
+          this._spawnRicochet(hit.point);
         }
+      } else {
+        // Total miss — ricochet at far end of ray
+        const origin = new THREE.Vector3();
+        const direction = new THREE.Vector3();
+        this.el.object3D.getWorldPosition(origin);
+        this.el.object3D.getWorldDirection(direction);
+        direction.negate();
+        const farPoint = origin.clone().add(direction.multiplyScalar(25));
+        this._spawnRicochet(farPoint);
       }
+      this._flashLaser(weapon);
     }
 
     // Notify shot fired (for accuracy tracking)
@@ -288,5 +302,53 @@ AFRAME.registerComponent('shoot-controls', {
     });
     scene.appendChild(mLight);
     setTimeout(() => { if (mLight.parentNode) mLight.parentNode.removeChild(mLight); }, 120);
+  },
+
+  _spawnRicochet(point) {
+    const scene = this.el.sceneEl;
+    if (!scene || !point) return;
+
+    const px = point.x, py = point.y, pz = point.z;
+
+    // Spark particles (4 small spheres)
+    for (let i = 0; i < 4; i++) {
+      const s = document.createElement('a-sphere');
+      s.setAttribute('radius', '0.008');
+      s.setAttribute('material', 'shader: flat; color: #ffcc44; opacity: 0.8');
+      s.setAttribute('position', `${px} ${py} ${pz}`);
+      const dx = (Math.random() - 0.5) * 1.2;
+      const dy = Math.random() * 0.8 + 0.2;
+      const dz = (Math.random() - 0.5) * 1.2;
+      s.setAttribute('animation__burst', {
+        property: 'position',
+        to: `${px + dx} ${py + dy} ${pz + dz}`,
+        dur: 200, easing: 'easeOutQuad',
+      });
+      s.setAttribute('animation__fade', {
+        property: 'material.opacity', from: 0.8, to: 0,
+        dur: 250, easing: 'easeOutQuad',
+      });
+      scene.appendChild(s);
+      setTimeout(() => { if (s.parentNode) s.parentNode.removeChild(s); }, 300);
+    }
+
+    // Flash light at impact
+    const fl = document.createElement('a-entity');
+    fl.setAttribute('position', `${px} ${py} ${pz}`);
+    fl.setAttribute('light', 'type: point; color: #ffcc44; intensity: 1; distance: 3; decay: 2');
+    fl.setAttribute('animation__dim', {
+      property: 'light.intensity', from: 1, to: 0, dur: 100, easing: 'easeOutQuad',
+    });
+    scene.appendChild(fl);
+    setTimeout(() => { if (fl.parentNode) fl.parentNode.removeChild(fl); }, 120);
+
+    // Spatial ricochet sound
+    if (window.__audioManager) {
+      window.__audioManager.playRicochet({ x: px, y: py, z: pz });
+    }
+
+    // Light haptic on miss
+    const hm = window.__hapticManager;
+    if (hm) hm.pulse(0.1, 20);
   },
 });

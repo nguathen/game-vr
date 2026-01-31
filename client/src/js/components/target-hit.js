@@ -225,22 +225,54 @@ AFRAME.registerComponent('target-hit', {
   },
 
   _pulseEnvironment(color) {
+    const type = this.data.targetType;
+    const isBoss = type === 'boss';
+
     // Pulse nearest barrier
     const barriers = document.querySelectorAll('.arena-barrier');
     barriers.forEach(b => {
       b.setAttribute('animation__pulse', {
-        property: 'material.opacity', from: 0.12, to: 0.03,
-        dur: 300, easing: 'easeOutQuad',
+        property: 'material.opacity', from: isBoss ? 0.25 : 0.12, to: 0.03,
+        dur: isBoss ? 500 : 300, easing: 'easeOutQuad',
       });
     });
     // Pulse platform edge glow
     const edges = document.querySelectorAll('.platform-edge');
     edges.forEach(e => {
       e.setAttribute('animation__hitpulse', {
-        property: 'material.opacity', from: 0.9, to: 0.3,
-        dur: 400, easing: 'easeOutQuad',
+        property: 'material.opacity', from: isBoss ? 1.0 : 0.9, to: 0.3,
+        dur: isBoss ? 600 : 400, easing: 'easeOutQuad',
       });
     });
+
+    // Pulse scene lights — flash nearest ambient/point lights
+    const scene = this.el.sceneEl;
+    const lights = scene.querySelectorAll('[light]');
+    const pulseColor = isBoss ? '#ffffff' : color;
+    lights.forEach(l => {
+      const lightData = l.getAttribute('light');
+      if (!lightData) return;
+      const origIntensity = lightData.intensity || 1;
+      const boost = isBoss ? origIntensity + 2.5 : origIntensity + 1.0;
+      l.setAttribute('animation__lightpulse', {
+        property: 'light.intensity', from: boost, to: origIntensity,
+        dur: isBoss ? 600 : 350, easing: 'easeOutQuad',
+      });
+      if (isBoss) {
+        const origColor = lightData.color || '#ffffff';
+        l.setAttribute('light', 'color', '#ffffff');
+        setTimeout(() => { l.setAttribute('light', 'color', origColor); }, 400);
+      }
+    });
+
+    // Platform glow intensify on kill
+    const platformBase = scene.querySelector('.platform-base');
+    if (platformBase) {
+      platformBase.setAttribute('animation__killglow', {
+        property: 'material.opacity', from: isBoss ? 0.5 : 0.3, to: 0.1,
+        dur: isBoss ? 600 : 400, easing: 'easeOutQuad',
+      });
+    }
   },
 
   _spawnParticles(color, pos) {

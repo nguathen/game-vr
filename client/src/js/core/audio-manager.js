@@ -509,6 +509,209 @@ class AudioManager {
     });
   }
 
+  playTelegraph(pos, isBoss) {
+    if (!this._enabled) return;
+    const ctx = this._getCtx();
+    const now = ctx.currentTime;
+    const dest = pos ? this._createPanner(pos) : this.destination;
+
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'sine';
+    const baseFreq = isBoss ? 200 : 400;
+    osc.frequency.setValueAtTime(baseFreq, now);
+    osc.frequency.exponentialRampToValueAtTime(baseFreq * 3, now + 0.4);
+    gain.gain.setValueAtTime(isBoss ? 0.15 : 0.08, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.45);
+    osc.connect(gain).connect(dest);
+    osc.start(now);
+    osc.stop(now + 0.45);
+  }
+
+  playRicochet(pos) {
+    if (!this._enabled) return;
+    const ctx = this._getCtx();
+    const now = ctx.currentTime;
+    const dest = pos ? this._createPanner(pos) : this.destination;
+    const pv = this._pitchVar();
+
+    // Short metallic ping
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(2000 * pv, now);
+    osc.frequency.exponentialRampToValueAtTime(800 * pv, now + 0.08);
+    gain.gain.setValueAtTime(0.12, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
+    osc.connect(gain).connect(dest);
+    osc.start(now);
+    osc.stop(now + 0.1);
+  }
+
+  /** Spatial target ambient hum */
+  createTargetHum(pos, type) {
+    if (!this._enabled) return null;
+    const ctx = this._getCtx();
+    const panner = this._createPanner(pos);
+
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    const freqMap = { standard: 120, speed: 280, heavy: 60, bonus: 440, decoy: 90, powerup: 350, charger: 80 };
+    osc.type = (type === 'heavy' || type === 'charger') ? 'sawtooth' : type === 'bonus' ? 'sine' : 'triangle';
+    osc.frequency.value = freqMap[type] || 120;
+    gain.gain.value = 0.02;
+    osc.connect(gain).connect(panner);
+    osc.start();
+
+    return { osc, gain, panner, update(p, vol) {
+      panner.setPosition(p.x || 0, p.y || 0, p.z || 0);
+      gain.gain.setTargetAtTime(vol, ctx.currentTime, 0.05);
+    }, stop() {
+      try { osc.stop(); } catch(e) {}
+      try { gain.disconnect(); panner.disconnect(); } catch(e) {}
+    }};
+  }
+
+  /** Projectile charge-up warning sound (spatial) */
+  playProjectileCharge(pos) {
+    if (!this._enabled) return;
+    const ctx = this._getCtx();
+    const now = ctx.currentTime;
+    const dest = pos ? this._createPanner(pos) : this.destination;
+
+    // Rising alarm tone
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(200, now);
+    osc.frequency.exponentialRampToValueAtTime(800, now + 0.6);
+    gain.gain.setValueAtTime(0.06, now);
+    gain.gain.linearRampToValueAtTime(0.15, now + 0.5);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.7);
+    osc.connect(gain).connect(dest);
+    osc.start(now);
+    osc.stop(now + 0.7);
+  }
+
+  /** Projectile hit player sound */
+  playProjectileHit() {
+    if (!this._enabled) return;
+    const ctx = this._getCtx();
+    const now = ctx.currentTime;
+
+    // Heavy impact thud
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(80, now);
+    osc.frequency.exponentialRampToValueAtTime(30, now + 0.3);
+    gain.gain.setValueAtTime(0.35, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+    osc.connect(gain).connect(this.destination);
+    osc.start(now);
+    osc.stop(now + 0.35);
+  }
+
+  /** Shield block sound */
+  playShieldBlock(pos) {
+    if (!this._enabled) return;
+    const ctx = this._getCtx();
+    const now = ctx.currentTime;
+    const dest = pos ? this._createPanner(pos) : this.destination;
+
+    // Bright metallic deflection
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'square';
+    osc.frequency.setValueAtTime(1600, now);
+    osc.frequency.exponentialRampToValueAtTime(3200, now + 0.04);
+    osc.frequency.exponentialRampToValueAtTime(800, now + 0.12);
+    gain.gain.setValueAtTime(0.2, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+    osc.connect(gain).connect(dest);
+    osc.start(now);
+    osc.stop(now + 0.15);
+  }
+
+  /** Charger approaching rumble (spatial) */
+  playChargerRumble(pos) {
+    if (!this._enabled) return;
+    const ctx = this._getCtx();
+    const now = ctx.currentTime;
+    const dest = pos ? this._createPanner(pos) : this.destination;
+
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'sawtooth';
+    osc.frequency.value = 60;
+    gain.gain.setValueAtTime(0.12, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
+    osc.connect(gain).connect(dest);
+    osc.start(now);
+    osc.stop(now + 0.5);
+  }
+
+  /** Charger explosion on contact */
+  playChargerExplode(pos) {
+    if (!this._enabled) return;
+    const ctx = this._getCtx();
+    const now = ctx.currentTime;
+    const dest = pos ? this._createPanner(pos) : this.destination;
+
+    // Noise burst
+    const bufSize = ctx.sampleRate * 0.12;
+    const buf = ctx.createBuffer(1, bufSize, ctx.sampleRate);
+    const data = buf.getChannelData(0);
+    for (let i = 0; i < bufSize; i++) data[i] = (Math.random() * 2 - 1) * 0.4;
+    const noise = ctx.createBufferSource();
+    noise.buffer = buf;
+    const nGain = ctx.createGain();
+    nGain.gain.setValueAtTime(0.3, now);
+    nGain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+    noise.connect(nGain).connect(dest);
+    noise.start(now);
+  }
+
+  /** Danger zone warning alarm */
+  playDangerZoneWarn(pos) {
+    if (!this._enabled) return;
+    const ctx = this._getCtx();
+    const now = ctx.currentTime;
+    const dest = pos ? this._createPanner(pos) : this.destination;
+
+    // Two-tone alarm
+    for (let i = 0; i < 3; i++) {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'square';
+      const t = now + i * 0.25;
+      osc.frequency.setValueAtTime(i % 2 === 0 ? 600 : 400, t);
+      gain.gain.setValueAtTime(0.08, t);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.15);
+      osc.connect(gain).connect(dest);
+      osc.start(t);
+      osc.stop(t + 0.15);
+    }
+  }
+
+  /** Danger zone damage tick */
+  playDangerZoneTick() {
+    if (!this._enabled) return;
+    const ctx = this._getCtx();
+    const now = ctx.currentTime;
+
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(150, now);
+    osc.frequency.exponentialRampToValueAtTime(80, now + 0.1);
+    gain.gain.setValueAtTime(0.1, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+    osc.connect(gain).connect(this.destination);
+    osc.start(now);
+    osc.stop(now + 0.12);
+  }
+
   playSelect() {
     if (!this._enabled) return;
     const ctx = this._getCtx();

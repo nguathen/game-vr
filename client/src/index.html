@@ -22,9 +22,11 @@
   <script src="./js/components/crosshair-feedback.js"></script>
   <script src="./js/components/target-indicator.js"></script>
   <script src="./js/components/teleport-pad.js"></script>
+  <script src="./js/components/weapon-model.js"></script>
+  <script src="./js/components/combo-popup.js"></script>
 
   <a-scene id="scene" vr-mode-ui="enterVRButton: #enter-vr-btn" shadow="type: pcfsoft; autoUpdate: true"
-           bloom-effect="strength: 0.6; radius: 0.4; threshold: 0.7">
+           bloom-effect="strength: 0.6; radius: 0.4; threshold: 0.7" combo-popup-listener>
     <!-- Player Rig -->
     <a-entity id="player-rig" position="0 0 0">
       <a-camera id="camera" position="0 1.6 0" wasd-controls-enabled="false" look-controls camera-effects="shakeLevel: medium" target-indicator>
@@ -102,7 +104,8 @@
       <a-entity id="right-hand"
                 laser-controls="hand: right; model: false; lineColor: #ff4444; lineOpacity: 0.7"
                 raycaster="objects: .clickable; far: 20; lineColor: #ff4444; lineOpacity: 0.7"
-                cursor="fuse: false; rayOrigin: entity">
+                cursor="fuse: false; rayOrigin: entity"
+                weapon-model>
       </a-entity>
     </a-entity>
 

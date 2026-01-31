@@ -61,9 +61,12 @@
   <script src="./js/components/target-hit.js"></script>
   <script src="./js/components/bloom-effect.js"></script>
   <script src="./js/components/camera-effects.js"></script>
+  <script src="./js/components/weapon-model.js"></script>
+  <script src="./js/components/combo-popup.js"></script>
+  <script src="./js/components/hand-shield.js"></script>
 
   <a-scene id="game-scene" vr-mode-ui="enterVRButton: #enter-vr-custom" shadow="type: pcfsoft; autoUpdate: true"
-           bloom-effect="strength: 0.6; radius: 0.4; threshold: 0.7">
+           bloom-effect="strength: 0.6; radius: 0.4; threshold: 0.7" combo-popup-listener>
     <!-- Player Rig -->
     <a-entity id="player-rig" position="0 0 0" smooth-locomotion="speed: 3; camera: #camera">
       <a-camera id="camera" position="0 1.6 0" wasd-controls="acceleration: 20" look-controls camera-effects="shakeLevel: medium">
@@ -102,7 +105,8 @@
                 oculus-touch-controls="hand: left"
                 laser-controls="hand: left; model: false"
                 raycaster="objects: .target; far: 50; lineColor: #44aaff; lineOpacity: 0.5"
-                shoot-controls="hand: left">
+                shoot-controls="hand: left"
+                hand-shield>
       </a-entity>
 
       <!-- Right controller -->
@@ -110,7 +114,8 @@
                 oculus-touch-controls="hand: right"
                 laser-controls="hand: right; model: false"
                 raycaster="objects: .target; far: 50; lineColor: #ff4444; lineOpacity: 0.7"
-                shoot-controls="hand: right">
+                shoot-controls="hand: right"
+                weapon-model>
       </a-entity>
     </a-entity>
 

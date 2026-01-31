@@ -27,6 +27,7 @@ let _initialized = false;
 // Expose systems to A-Frame components (non-module)
 window.__weaponSystem = weaponSystem;
 window.__hapticManager = hapticManager;
+window.__audioManager = audioManager;
 
 export function startGame({ mode, weapon, theme, onReturnToMenu }) {
   if (mode) gameModeManager.select(mode);
@@ -90,6 +91,21 @@ function _initOnce() {
 
   // Spawn ambient particles once
   _spawnAmbientParticles(_scene);
+
+  // Shield block bonus points (TASK-254)
+  document.addEventListener('shield-block', (e) => {
+    if (gameManager.state !== GameState.PLAYING) return;
+    const pts = e.detail?.points || 5;
+    scoreManager.add(pts);
+    // Damage number at block position
+    if (e.detail?.pos && _scene) {
+      const pos = e.detail.pos;
+      const el = document.createElement('a-entity');
+      el.setAttribute('position', `${pos.x} ${pos.y + 0.3} ${pos.z}`);
+      el.setAttribute('damage-number', `text: +${pts} BLOCK; color: #4488ff`);
+      _scene.appendChild(el);
+    }
+  });
 
   // Slow-motion overlay handler
   document.addEventListener('slow-motion', (e) => {
@@ -210,6 +226,9 @@ function _initRound(themeParam) {
 
   _updateLivesDisplay();
 
+  // Ambient environment motion
+  _startAmbientMotion(_scene);
+
   // Power-up HUD updates
   powerUpManager.onUpdate = (display) => {
     if (!_hudPowerup) return;
@@ -274,11 +293,13 @@ function _initRound(themeParam) {
         }
       }
 
-      // Bass drop zoom-out snap at milestone combos (x5, x10, x15)
-      if (combo === 5 || combo === 10 || combo === 15) {
+      // Bass drop zoom-out snap at milestone combos (x5, x10, x15, x20...)
+      if (combo % 5 === 0 && combo >= 5) {
         const zoomDur = combo >= 15 ? 300 : combo >= 10 ? 250 : 200;
         document.dispatchEvent(new CustomEvent('camera-impact-zoom', { detail: { duration: zoomDur } }));
         hapticManager.combo(combo);
+        // 3D world-space combo popup
+        document.dispatchEvent(new CustomEvent('combo-milestone', { detail: { combo } }));
       }
 
       // Combo vignette overlay
@@ -286,11 +307,15 @@ function _initRound(themeParam) {
 
       // Arena barrier glow intensifies with combo
       _updateBarrierComboGlow(combo);
+
+      // Dynamic music intensity
+      musicManager.setIntensity(combo);
     } else {
       _hudCombo.setAttribute('value', '');
       _hudCombo.removeAttribute('animation__pop');
       _updateComboVignette(0);
       _updateBarrierComboGlow(0);
+      musicManager.setIntensity(0);
     }
   };
 
@@ -314,6 +339,21 @@ function _initRound(themeParam) {
       }
       if (dead) endGame();
     }
+  };
+
+  // Player damage from projectiles, chargers, danger zones (TASK-250/251/253)
+  targetSystem.onPlayerDamage = (source) => {
+    const currentMode = gameModeManager.current;
+    if (currentMode.lives !== Infinity) {
+      const dead = gameModeManager.loseLife();
+      _updateLivesDisplay();
+      if (dead) endGame();
+    } else {
+      // Time attack: deduct points
+      scoreManager.add(source === 'dangerZone' ? -10 : -20);
+    }
+    // Camera shake on damage
+    document.dispatchEvent(new CustomEvent('camera-shake', { detail: { intensity: 0.02, duration: 200 } }));
   };
 
   _startCountdown();
@@ -675,6 +715,70 @@ async function endGame() {
   }
 }
 
+// === Ambient Environment Motion (TASK-243) ===
+
+function _startAmbientMotion(sceneEl) {
+  const gc = sceneEl.querySelector('#game-content') || sceneEl;
+
+  // Barrier shimmer: each barrier gets offset phase opacity oscillation
+  const barriers = gc.querySelectorAll('.arena-barrier');
+  barriers.forEach((b, i) => {
+    const phase = i * 800;
+    b.setAttribute('animation__shimmer', {
+      property: 'material.opacity',
+      from: 0.01, to: 0.04,
+      dur: 2500 + phase,
+      loop: true, dir: 'alternate',
+      easing: 'easeInOutSine',
+    });
+  });
+
+  // Point lights breathing: slow intensity oscillation with offset per light
+  const lights = gc.querySelectorAll('a-light[type="point"]');
+  lights.forEach((l, i) => {
+    const baseIntensity = parseFloat(l.getAttribute('intensity') || '0.6');
+    const low = Math.max(0.1, baseIntensity - 0.2);
+    const high = baseIntensity + 0.15;
+    l.setAttribute('animation__breathe', {
+      property: 'intensity',
+      from: low, to: high,
+      dur: 3000 + i * 700,
+      loop: true, dir: 'alternate',
+      easing: 'easeInOutSine',
+    });
+  });
+
+  // Ground fog layer (subtle translucent plane at floor level)
+  const existingFog = gc.querySelector('#ground-fog');
+  if (!existingFog) {
+    const fog = document.createElement('a-plane');
+    fog.id = 'ground-fog';
+    fog.setAttribute('position', '0 0.05 0');
+    fog.setAttribute('rotation', '-90 0 0');
+    fog.setAttribute('width', '30');
+    fog.setAttribute('height', '30');
+    fog.setAttribute('material', 'shader: flat; color: #aabbff; opacity: 0.015; transparent: true');
+    fog.setAttribute('animation__fogpulse', {
+      property: 'material.opacity',
+      from: 0.01, to: 0.025,
+      dur: 5000, loop: true, dir: 'alternate',
+      easing: 'easeInOutSine',
+    });
+    gc.appendChild(fog);
+  }
+
+  // Pillar glow rings: responsive to combo (speed up rotation)
+  const pillarToruses = gc.querySelectorAll('.arena-pillar a-torus');
+  pillarToruses.forEach((t, i) => {
+    t.setAttribute('animation__combospin', {
+      property: 'rotation',
+      to: `0 360 0`,
+      dur: 6000 + i * 500,
+      loop: true, easing: 'linear',
+    });
+  });
+}
+
 // === Combo Juice Helpers (TASK-227) ===
 
 function _updateComboVignette(combo) {
@@ -706,6 +810,14 @@ function _updateBarrierComboGlow(combo) {
   } else {
     barriers.forEach(b => b.setAttribute('material', 'opacity', 0.015));
   }
+
+  // Pillar ring rotation speed scales with combo
+  const pillarToruses = document.querySelectorAll('.arena-pillar a-torus');
+  const baseDur = 6000;
+  const speedFactor = combo >= 15 ? 0.3 : combo >= 10 ? 0.5 : combo >= 5 ? 0.7 : 1.0;
+  pillarToruses.forEach((t, i) => {
+    t.setAttribute('animation__combospin', 'dur', Math.round((baseDur + i * 500) * speedFactor));
+  });
 }
 
 // SPA: game is started via startGame() exported above, called from main.js
